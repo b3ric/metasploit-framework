@@ -131,7 +131,7 @@ class MetasploitModule < Msf::Auxiliary
       print_error('Invalid response, not JSON. Likely not an iDRAC.')
       return
     end
-    if json['authResult'] == 1 or json['authResult'] == 8
+    if (json['authResult'] == 1) || (json['authResult'] == 8)
       vprint_error("#{target_url} - Dell iDRAC - Failed to login as '#{user}' with password '#{pass}'")
       if !json['blockingTime'].nil? && json['blockingTime'] > 0
         @blockingtime = json['blockingTime']

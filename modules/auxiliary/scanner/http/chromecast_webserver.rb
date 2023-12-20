@@ -9,19 +9,22 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Chromecast Web Server Scanner',
-      'Description' => %q{
-        This module scans for the Chromecast web server on port 8008/TCP, and
-        can be used to discover devices which can be targeted by other Chromecast
-        modules, such as chromecast_youtube.
-      },
-      'Author' => ['wvu'],
-      'References' => [
-        ['URL', 'https://store.google.com/product/chromecast?utm_source=chromecast.com&hl=en-US']
-      ],
-      'License' => MSF_LICENSE
-    ))
+    super(
+      update_info(
+        info,
+        'Name' => 'Chromecast Web Server Scanner',
+        'Description' => %q{
+          This module scans for the Chromecast web server on port 8008/TCP, and
+          can be used to discover devices which can be targeted by other Chromecast
+          modules, such as chromecast_youtube.
+        },
+        'Author' => ['wvu'],
+        'References' => [
+          ['URL', 'https://store.google.com/product/chromecast?utm_source=chromecast.com&hl=en-US']
+        ],
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options([
       Opt::RPORT(8008)
@@ -32,22 +35,23 @@ class MetasploitModule < Msf::Auxiliary
     res = send_request_raw(
       'method' => 'GET',
       'uri' => '/setup/eureka_info',
-      'agent' => Rex::Text.rand_text_english(rand(42) + 1)
+      'agent' => Rex::Text.rand_text_english(rand(1..42))
     )
 
     return unless (res && res.code == 200)
 
     json = res.get_json_document
-    name, ssid = json['name'], json['ssid']
+    name = json['name']
+    ssid = json['ssid']
 
     if name && ssid
-      print_good(%Q{#{peer} - Chromecast "#{name}" is connected to #{ssid}})
+      print_good(%(#{peer} - Chromecast "#{name}" is connected to #{ssid}))
       report_service(
-        :host => ip,
-        :port => rport,
-        :proto => 'tcp',
-        :name => 'http',
-        :info => %Q{Chromecast "#{name}" connected to #{ssid}}
+        host: ip,
+        port: rport,
+        proto: 'tcp',
+        name: 'http',
+        info: %(Chromecast "#{name}" connected to #{ssid})
       )
     end
   end

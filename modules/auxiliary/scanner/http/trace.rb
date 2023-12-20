@@ -13,49 +13,44 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'        => 'HTTP Cross-Site Tracing Detection',
+      'Name' => 'HTTP Cross-Site Tracing Detection',
       'Description' => 'Checks if the host is vulnerable to Cross-Site Tracing (XST)',
-      'Author'       =>
-        [
-          'Jay Turla <@shipcod3>' , #Cross-Site Tracing (XST) Checker
-          'CG' #HTTP TRACE Detection
-        ],
-      'License'     => MSF_LICENSE,
-      'References'  =>
-        [
-          ['CVE', '2005-3398'], # early case where this vector applied to a specific application.
-          ['URL', 'https://owasp.org/www-community/attacks/Cross_Site_Tracing']
-        ]
+      'Author' => [
+        'Jay Turla <@shipcod3>', # Cross-Site Tracing (XST) Checker
+        'CG' # HTTP TRACE Detection
+      ],
+      'License' => MSF_LICENSE,
+      'References' => [
+        ['CVE', '2005-3398'], # early case where this vector applied to a specific application.
+        ['URL', 'https://owasp.org/www-community/attacks/Cross_Site_Tracing']
+      ]
     )
   end
 
-  def run_host(target_host)
+  def run_host(_target_host)
+    res = send_request_raw({
+      'uri' => '/<script>alert(1337)</script>', # XST Payload
+      'method' => 'TRACE'
+    })
 
-    begin
-      res = send_request_raw({
-        'uri'          => '/<script>alert(1337)</script>', #XST Payload
-        'method'       => 'TRACE',
-      })
-
-      unless res
-        vprint_error("#{rhost}:#{rport} did not reply to our request")
-        return
-      end
-
-      if res.body.to_s.index('/<script>alert(1337)</script>')
-        print_good("#{rhost}:#{rport} is vulnerable to Cross-Site Tracing")
-        report_vuln(
-          :host   => rhost,
-          :port   => rport,
-          :proto  => 'tcp',
-          :sname  => (ssl ? 'https' : 'http'),
-          :info   => "Vulnerable to Cross-Site Tracing",
-        )
-      else
-        vprint_error("#{rhost}:#{rport} returned #{res.code} #{res.message}")
-      end
-    rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
-    rescue ::Timeout::Error, ::Errno::EPIPE
+    unless res
+      vprint_error("#{rhost}:#{rport} did not reply to our request")
+      return
     end
+
+    if res.body.to_s.index('/<script>alert(1337)</script>')
+      print_good("#{rhost}:#{rport} is vulnerable to Cross-Site Tracing")
+      report_vuln(
+        host: rhost,
+        port: rport,
+        proto: 'tcp',
+        sname: (ssl ? 'https' : 'http'),
+        info: 'Vulnerable to Cross-Site Tracing'
+      )
+    else
+      vprint_error("#{rhost}:#{rport} returned #{res.code} #{res.message}")
+    end
+  rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
+  rescue ::Timeout::Error, ::Errno::EPIPE
   end
 end

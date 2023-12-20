@@ -9,29 +9,31 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
 
   def initialize(info = {})
-    super(update_info(
-      info,
-      'Name' => "Allegro Software RomPager 'Misfortune Cookie' (CVE-2014-9222) Scanner",
-      'Description' => %q(
-        This module scans for HTTP servers that appear to be vulnerable to the
-        'Misfortune Cookie' vulnerability which affects Allegro Software
-        Rompager versions before 4.34 and can allow attackers to authenticate
-        to the HTTP service as an administrator without providing valid
-        credentials.
-      ),
-      'Author' => [
-        'Jon Hart <jon_hart[at]rapid7.com>', # metasploit module
-        'Lior Oppenheim' # CVE-2014-9222
-      ],
-      'References' => [
-        ['CVE', '2014-9222'],
-        ['URL', 'http://mis.fortunecook.ie'],
-        ['URL', 'http://mis.fortunecook.ie/misfortune-cookie-suspected-vulnerable.pdf'], # list of likely vulnerable devices
-        ['URL', 'http://mis.fortunecook.ie/too-many-cooks-exploiting-tr069_tal-oppenheim_31c3.pdf'] # 31C3 presentation with POC
-      ],
-      'DisclosureDate' => '2014-12-17',
-      'License' => MSF_LICENSE
-    ))
+    super(
+      update_info(
+        info,
+        'Name' => "Allegro Software RomPager 'Misfortune Cookie' (CVE-2014-9222) Scanner",
+        'Description' => %q{
+          This module scans for HTTP servers that appear to be vulnerable to the
+          'Misfortune Cookie' vulnerability which affects Allegro Software
+          Rompager versions before 4.34 and can allow attackers to authenticate
+          to the HTTP service as an administrator without providing valid
+          credentials.
+        },
+        'Author' => [
+          'Jon Hart <jon_hart[at]rapid7.com>', # metasploit module
+          'Lior Oppenheim' # CVE-2014-9222
+        ],
+        'References' => [
+          ['CVE', '2014-9222'],
+          ['URL', 'http://mis.fortunecook.ie'],
+          ['URL', 'http://mis.fortunecook.ie/misfortune-cookie-suspected-vulnerable.pdf'], # list of likely vulnerable devices
+          ['URL', 'http://mis.fortunecook.ie/too-many-cooks-exploiting-tr069_tal-oppenheim_31c3.pdf'] # 31C3 presentation with POC
+        ],
+        'DisclosureDate' => '2014-12-17',
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
@@ -48,11 +50,9 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   def check_host(_ip)
-    begin
-      test_misfortune
-    ensure
-      disconnect
-    end
+    test_misfortune
+  ensure
+    disconnect
   end
 
   def run_host(ip)
@@ -76,7 +76,7 @@ class MetasploitModule < Msf::Auxiliary
   # otherwise returns the provided fall-back status.
   def check_response_fingerprint(res, fallback_status)
     fp = http_fingerprint(response: res)
-    if /RomPager\/(?<version>[\d\.]+)/ =~ fp
+    if %r{RomPager/(?<version>[\d.]+)} =~ fp
       vprint_status("#{peer} is RomPager #{version}")
       if Rex::Version.new(version) < Rex::Version.new('4.34')
         return Exploit::CheckCode::Appears
@@ -124,7 +124,7 @@ class MetasploitModule < Msf::Auxiliary
   # vulnerable.
   def test_misfortune
     # find a usable canary URI (one that returns an acceptable status code already)
-    if canary = find_canary
+    if (canary = find_canary)
       canary_value, canary_code = canary
       vprint_status("#{peer} found canary URI #{canary_value} with code #{canary_code}")
     else

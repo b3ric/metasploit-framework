@@ -10,47 +10,46 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'         => 'Concrete5 Member List Enumeration',
-      'Description'  => %q{
+      'Name' => 'Concrete5 Member List Enumeration',
+      'Description' => %q{
         This module extracts username information from the Concrete5 member page
         },
-      'References'   =>
-        [
-          # General
-          [ 'URL', 'https://blog.c22.cc/' ],
-          # Concrete5
-          [ 'URL', 'https://www.concretecms.com/'],
-          [ 'URL', 'https://web.archive.org/web/20120704205851/http://www.concrete5.org/documentation/using-concrete5/dashboard/users-and-groups/']
-        ],
-      'Author'       => [ 'Chris John Riley' ],
-      'License'      => MSF_LICENSE
+      'References' => [
+        # General
+        [ 'URL', 'https://blog.c22.cc/' ],
+        # Concrete5
+        [ 'URL', 'https://www.concretecms.com/'],
+        [ 'URL', 'https://web.archive.org/web/20120704205851/http://www.concrete5.org/documentation/using-concrete5/dashboard/users-and-groups/']
+      ],
+      'Author' => [ 'Chris John Riley' ],
+      'License' => MSF_LICENSE
     )
 
     register_options(
       [
         Opt::RPORT(80),
         OptString.new('URI', [false, 'URL of the Concrete5 root', '/'])
-      ])
+      ]
+    )
   end
 
-  def run_host(rhost)
+  def run_host(_rhost)
     url = normalize_uri(datastore['URI'], '/index.php/members')
 
     begin
-      res = send_request_raw({'uri' => url})
-
+      res = send_request_raw({ 'uri' => url })
     rescue ::Rex::ConnectionError
       print_error("#{peer} Unable to connect to #{url}")
       return
     end
 
-    if not res
+    if !res
       print_error("#{peer} Unable to connect to #{url}")
       return
     end
 
     # extract member info from response if present
-    if res and res.body =~ /ccm\-profile\-member\-username/i
+    if res && res.body =~ (/ccm-profile-member-username/i)
       extract_members(res, url)
     elsif res
       print_line(res.body)
@@ -58,21 +57,22 @@ class MetasploitModule < Msf::Auxiliary
     else
       print_error("#{peer} No response received")
     end
-
   end
 
-  def extract_members(res, url)
+  def extract_members(res, _url)
     members = res.get_html_document.search('div[@class="ccm-profile-member-username"]')
 
-    unless members.empty?
+    if members.empty?
+      print_error("#{peer} Unable to extract members")
+    else
       print_good("#{peer} Extracted #{members.length} entries")
 
       # separate user data into userID, username and Profile URL
       memberlist = []
       users = []
 
-      members.each do | mem |
-        userid = mem.text.scan(/\/view\/(\d+)/i).flatten.first
+      members.each do |mem|
+        userid = mem.text.scan(%r{/view/(\d+)}i).flatten.first
         anchor = mem.at('a')
         username = anchor.text
         profile = anchor.attributes['href'].value
@@ -84,19 +84,21 @@ class MetasploitModule < Msf::Auxiliary
       end
 
       membertbl = Msf::Ui::Console::Table.new(
-            Msf::Ui::Console::Table::Style::Default, {
-            'Header'    => "Concrete5 members",
-            'Prefix'  => "\n",
-            'Postfix' => "\n",
-            'Indent'    => 1,
-            'Columns'   =>
+        Msf::Ui::Console::Table::Style::Default, {
+          'Header' => 'Concrete5 members',
+          'Prefix' => "\n",
+          'Postfix' => "\n",
+          'Indent' => 1,
+          'Columns' =>
             [
-              "UserID",
-              "Username",
-              "Profile"
-            ]})
+              'UserID',
+              'Username',
+              'Profile'
+            ]
+        }
+      )
 
-      memberlist.each do | mem |
+      memberlist.each do |mem|
         membertbl << [mem[0], mem[1], mem[2]]
       end
 
@@ -105,15 +107,13 @@ class MetasploitModule < Msf::Auxiliary
 
       # store username to loot
       report_note({
-        :host => rhost,
-        :port => rport,
-        :proto => 'tcp',
-        :type => "concrete5 CMS members",
-        :data => {:proto => "http", :users => users.join(",")}
+        host: rhost,
+        port: rport,
+        proto: 'tcp',
+        type: 'concrete5 CMS members',
+        data: { proto: 'http', users: users.join(',') }
       })
 
-    else
-      print_error("#{peer} Unable to extract members")
     end
   end
 end

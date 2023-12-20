@@ -15,10 +15,10 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'           => 'Jenkins-CI Login Utility',
-      'Description'    => 'This module attempts to login to a Jenkins-CI instance using a specific user/pass.',
-      'Author'         => [ 'Nicholas Starke <starke.nicholas[at]gmail.com>' ],
-      'License'        => MSF_LICENSE
+      'Name' => 'Jenkins-CI Login Utility',
+      'Description' => 'This module attempts to login to a Jenkins-CI instance using a specific user/pass.',
+      'Author' => [ 'Nicholas Starke <starke.nicholas[at]gmail.com>' ],
+      'License' => MSF_LICENSE
     )
 
     register_options(
@@ -26,7 +26,8 @@ class MetasploitModule < Msf::Auxiliary
         OptEnum.new('HTTP_METHOD', [true, 'The HTTP method to use for the login', 'POST', ['GET', 'POST']]),
         Opt::RPORT(8080),
         OptString.new('TARGETURI', [ false, 'The path to the Jenkins-CI application'])
-      ])
+      ]
+    )
 
     deregister_options('PASSWORD_SPRAY')
 
@@ -34,7 +35,7 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   def run_host(ip)
-    print_warning("#{self.fullname} is still calling the deprecated LOGIN_URL option! This is no longer supported.") unless datastore['LOGIN_URL'].nil?
+    print_warning("#{fullname} is still calling the deprecated LOGIN_URL option! This is no longer supported.") unless datastore['LOGIN_URL'].nil?
     cred_collection = build_credential_collection(
       username: datastore['USERNAME'],
       password: datastore['PASSWORD']
@@ -57,8 +58,8 @@ class MetasploitModule < Msf::Auxiliary
     scanner.scan! do |result|
       credential_data = result.to_h
       credential_data.merge!(
-          module_fullname: fullname,
-          workspace_id: myworkspace_id
+        module_fullname: fullname,
+        workspace_id: myworkspace_id
       )
       if result.success?
         credential_core = create_credential(credential_data)

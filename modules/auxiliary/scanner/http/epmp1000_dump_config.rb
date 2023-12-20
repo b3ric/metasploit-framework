@@ -7,25 +7,25 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::EPMP
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Cambium ePMP 1000 Dump Device Config',
-      'Description' => %{
+    super(
+      update_info(
+        info,
+        'Name' => 'Cambium ePMP 1000 Dump Device Config',
+        'Description' => %q{
           This module dumps Cambium ePMP 1000 device configuration file. An
           ePMP 1000 box has four (4) login accounts - admin/admin, installer/installer,
           home/home, and readonly/readonly. This module requires any one of the following
           login credentials - admin / installer / home - to dump device configuration
           file.
-      },
-      'Author' =>
-        [
+        },
+        'Author' => [
           'Karn Ganeshen <KarnGaneshen[at]gmail.com>'
         ],
-      'References' =>
-        [
+        'References' => [
           ['URL', 'http://ipositivesecurity.com/2015/11/28/cambium-epmp-1000-multiple-vulnerabilities/']
         ],
-      'License' => MSF_LICENSE
-     )
+        'License' => MSF_LICENSE
+      )
     )
 
     register_options(
@@ -39,7 +39,7 @@ class MetasploitModule < Msf::Auxiliary
     deregister_options('DB_ALL_CREDS', 'DB_ALL_PASS', 'DB_ALL_USERS', 'USER_AS_PASS', 'USERPASS_FILE', 'USER_FILE', 'PASS_FILE', 'BLANK_PASSWORDS', 'BRUTEFORCE_SPEED', 'STOP_ON_SUCCESS')
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     unless is_app_epmp1000?
       return
     end
@@ -83,18 +83,13 @@ class MetasploitModule < Msf::Auxiliary
   def do_login(epmp_ver)
     if epmp_ver < '3.4.1' # <3.4.1 uses login_1
       cookie, config_uri_dump_config = login_1(datastore['USERNAME'], datastore['PASSWORD'], epmp_ver)
-      if cookie == 'skip' && config_uri_dump_config == 'skip'
-        return
-      else
-        dump_config(config_uri_dump_config, cookie)
-      end
     else
       cookie, config_uri_dump_config = login_2(datastore['USERNAME'], datastore['PASSWORD'], epmp_ver) # 3.4.1+ uses login_2
-      if cookie == 'skip' && config_uri_dump_config == 'skip'
-        return
-      else
-        dump_config(config_uri_dump_config, cookie)
-      end
+    end
+    if cookie == 'skip' && config_uri_dump_config == 'skip'
+      return
+    else
+      dump_config(config_uri_dump_config, cookie)
     end
   end
 end

