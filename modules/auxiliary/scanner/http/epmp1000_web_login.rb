@@ -7,23 +7,23 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::EPMP
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Cambium ePMP 1000 Login Scanner',
-      'Description' => %{
-        This module scans for Cambium ePMP 1000 management login portal(s), and
-        attempts to identify valid credentials. Default login credentials are -
-        admin/admin, installer/installer, home/home and readonly/readonly.
-      },
-      'Author' =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'Cambium ePMP 1000 Login Scanner',
+        'Description' => %q{
+          This module scans for Cambium ePMP 1000 management login portal(s), and
+          attempts to identify valid credentials. Default login credentials are -
+          admin/admin, installer/installer, home/home and readonly/readonly.
+        },
+        'Author' => [
           'Karn Ganeshen <KarnGaneshen[at]gmail.com>'
         ],
-      'References' =>
-        [
+        'References' => [
           ['URL', 'http://ipositivesecurity.com/2015/11/28/cambium-epmp-1000-multiple-vulnerabilities/']
         ],
-      'License'        => MSF_LICENSE
-     )
+        'License' => MSF_LICENSE
+      )
     )
 
     register_options(
@@ -35,7 +35,7 @@ class MetasploitModule < Msf::Auxiliary
     )
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     unless is_app_epmp1000?
       return
     end

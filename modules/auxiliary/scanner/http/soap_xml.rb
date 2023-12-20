@@ -13,14 +13,18 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'        => 'HTTP SOAP Verb/Noun Brute Force Scanner',
-      'Description' => %q(
-        This module attempts to brute force SOAP/XML requests to uncover
-        hidden methods.
-      ),
-      'Author'      => ['aushack'],
-      'License'     => MSF_LICENSE))
+    super(
+      update_info(
+        info,
+        'Name' => 'HTTP SOAP Verb/Noun Brute Force Scanner',
+        'Description' => %q{
+          This module attempts to brute force SOAP/XML requests to uncover
+          hidden methods.
+        },
+        'Author' => ['aushack'],
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
@@ -34,12 +38,13 @@ class MetasploitModule < Msf::Auxiliary
         OptBool.new('DISPLAYHTML', [true, 'Display HTML response', false]),
         OptBool.new('SSL', [true, 'Use SSL', false]),
         OptBool.new('VERB_DELETE', [false, 'Enable DELETE verb', false])
-      ])
+      ]
+    )
   end
 
   # Fingerprint a single host
   def run_host(ip)
-    verbs = %w(
+    verbs = %w[
       get
       active
       activate
@@ -66,11 +71,11 @@ class MetasploitModule < Msf::Auxiliary
       add
       list
       query
-    )
+    ]
 
     verbs << 'delete' if datastore['VERB_DELETE']
 
-    nouns = %w(
+    nouns = %w[
       password
       task
       tasks
@@ -113,7 +118,7 @@ class MetasploitModule < Msf::Auxiliary
       registry
       on
       off
-    )
+    ]
 
     vhost = datastore['VHOST'] || wmap_target_host || ip
 
@@ -126,73 +131,72 @@ class MetasploitModule < Msf::Auxiliary
     print_status("Starting scan with #{datastore['SLEEP']}ms delay between requests")
     verbs.each do |v|
       nouns.each do |n|
-        begin
-          data_parts = []
-          data_parts << '<?xml version="1.0" encoding="utf-8"?>'
-          data_parts << "<soap:Envelope xmlns:xsi=\"#{datastore['XMLINSTANCE']}\" xmlns:xsd=\"#{datastore['XMLSCHEMA']}\" xmlns:soap=\"#{datastore['XMLSOAP']}\">"
-          data_parts << '<soap:Body>'
-          data_parts << "<#{v}#{n} xmlns=\"#{datastore['XMLNAMESPACE']}\">"
-          data_parts << "</#{v}#{n}>"
-          data_parts << '</soap:Body>'
-          data_parts << '</soap:Envelope>'
-          data_parts << nil
-          data_parts << nil
-          data = data_parts.join("\r\n")
+        data_parts = []
+        data_parts << '<?xml version="1.0" encoding="utf-8"?>'
+        data_parts << "<soap:Envelope xmlns:xsi=\"#{datastore['XMLINSTANCE']}\" xmlns:xsd=\"#{datastore['XMLSCHEMA']}\" xmlns:soap=\"#{datastore['XMLSOAP']}\">"
+        data_parts << '<soap:Body>'
+        data_parts << "<#{v}#{n} xmlns=\"#{datastore['XMLNAMESPACE']}\">"
+        data_parts << "</#{v}#{n}>"
+        data_parts << '</soap:Body>'
+        data_parts << '</soap:Envelope>'
+        data_parts << nil
+        data_parts << nil
+        data = data_parts.join("\r\n")
 
-          uri = normalize_uri(datastore['PATH'])
-          uri += '/' unless uri =~ /^\/$/
-          uri += v + n
+        uri = normalize_uri(datastore['PATH'])
+        uri += '/' unless uri =~ %r{^/$}
+        uri += v + n
 
-          vprint_status("Sending request #{uri} #{wmap_target_host}:#{datastore['RPORT']}")
+        vprint_status("Sending request #{uri} #{wmap_target_host}:#{datastore['RPORT']}")
 
-          res = send_request_raw(
-            {
-              'uri'     => uri,
-              'method'  => 'POST',
-              'vhost'   => vhost,
-              'data'	  => data,
-              'headers' =>
-                {
-                  'Content-Length' => data.length,
-                  'SOAPAction'	 => '"' + datastore['XMLNAMESPACE'] + v + n + '"',
-                  'Expect'	 => '100-continue',
-                  'Content-Type'	 => datastore['CONTENTTYPE']
-                }
-            }, 15)
+        res = send_request_raw(
+          {
+            'uri' => uri,
+            'method' => 'POST',
+            'vhost' => vhost,
+            'data'	=> data,
+            'headers' =>
+              {
+                'Content-Length' => data.length,
+                'SOAPAction'	=> '"' + datastore['XMLNAMESPACE'] + v + n + '"',
+                'Expect'	=> '100-continue',
+                'Content-Type'	=> datastore['CONTENTTYPE']
+              }
+          }, 15
+        )
 
-          if res && !(res.body.empty?)
-            if reject_regexen.any? { |r| res.body =~ r }
-              print_status("Server #{wmap_target_host}:#{datastore['RPORT']} rejected SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}.")
-            elsif res.message =~ /Cannot process the message because the content type/
-              print_status("Server #{wmap_target_host}:#{datastore['RPORT']} rejected CONTENTTYPE: HTTP: #{res.code} #{res.message}.")
-              res.message =~ /was not the expected type\s\'([^']+)'/
-              print_status("Set CONTENTTYPE to \"#{$1}\"")
-              return false
-            elsif res.code == 404
-              print_status("Server #{wmap_target_host}:#{datastore['RPORT']} returned HTTP 404 for #{datastore['PATH']}.  Use a different one.")
-              return false
-            else
-              print_good("Server #{wmap_target_host}:#{datastore['RPORT']} responded to SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}.")
-              # Add Report
-              report_note(
-                host: ip,
-                proto: 'tcp',
-                sname: (ssl ? 'https' : 'http'),
-                port: rport,
-                type: "SOAPAction: #{v}#{n}",
-                data: "SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}."
-              )
-              if datastore['DISPLAYHTML']
-                print_status('The HTML content follows:')
-                print_status(res.body + "\r\n")
-              end
+        if res && !res.body.empty?
+          if reject_regexen.any? { |r| res.body =~ r }
+            print_status("Server #{wmap_target_host}:#{datastore['RPORT']} rejected SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}.")
+          elsif res.message =~ /Cannot process the message because the content type/
+            print_status("Server #{wmap_target_host}:#{datastore['RPORT']} rejected CONTENTTYPE: HTTP: #{res.code} #{res.message}.")
+            res.message =~ /was not the expected type\s'([^']+)'/
+            print_status("Set CONTENTTYPE to \"#{::Regexp.last_match(1)}\"")
+            return false
+          elsif res.code == 404
+            print_status("Server #{wmap_target_host}:#{datastore['RPORT']} returned HTTP 404 for #{datastore['PATH']}.  Use a different one.")
+            return false
+          else
+            print_good("Server #{wmap_target_host}:#{datastore['RPORT']} responded to SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}.")
+            # Add Report
+            report_note(
+              host: ip,
+              proto: 'tcp',
+              sname: (ssl ? 'https' : 'http'),
+              port: rport,
+              type: "SOAPAction: #{v}#{n}",
+              data: "SOAPAction: #{v}#{n} with HTTP: #{res.code} #{res.message}."
+            )
+            if datastore['DISPLAYHTML']
+              print_status('The HTML content follows:')
+              print_status(res.body + "\r\n")
             end
           end
-        rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::Timeout::Error, ::Errno::EPIPE => e
-          print_error(e.message)
-        ensure
-          Rex.sleep(sleep_time)
         end
+      rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::Timeout::Error, ::Errno::EPIPE => e
+        print_error(e.message)
+      ensure
+        Rex.sleep(sleep_time)
       end
     end
   end

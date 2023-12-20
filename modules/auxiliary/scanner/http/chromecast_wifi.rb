@@ -8,17 +8,20 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Chromecast Wifi Enumeration',
-      'Description' => %q{
-        This module enumerates wireless access points through Chromecast.
-      },
-      'Author' => ['wvu'],
-      'References' => [
-        ['URL', 'http://www.google.com/intl/en/chrome/devices/chromecast/index.html'] # vendor website
-      ],
-      'License' => MSF_LICENSE
-    ))
+    super(
+      update_info(
+        info,
+        'Name' => 'Chromecast Wifi Enumeration',
+        'Description' => %q{
+          This module enumerates wireless access points through Chromecast.
+        },
+        'Author' => ['wvu'],
+        'References' => [
+          ['URL', 'http://www.google.com/intl/en/chrome/devices/chromecast/index.html'] # vendor website
+        ],
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options([
       Opt::RPORT(8008)
@@ -57,11 +60,11 @@ class MetasploitModule < Msf::Auxiliary
     unless waps_table.rows.empty?
       print_line(waps_table.to_s)
       report_note(
-        :host => ip,
-        :port => rport,
-        :proto => 'tcp',
-        :type => 'chromecast.wifi',
-        :data => waps_table.to_csv
+        host: ip,
+        port: rport,
+        proto: 'tcp',
+        type: 'chromecast.wifi',
+        data: waps_table.to_csv
       )
     end
   end
@@ -70,12 +73,12 @@ class MetasploitModule < Msf::Auxiliary
     send_request_raw(
       'method' => 'POST',
       'uri' => '/setup/scan_wifi',
-      'agent' => Rex::Text.rand_text_english(rand(42) + 1)
+      'agent' => Rex::Text.rand_text_english(rand(1..42))
     )
     send_request_raw(
       'method' => 'GET',
       'uri' => '/setup/scan_results',
-      'agent' => Rex::Text.rand_text_english(rand(42) + 1)
+      'agent' => Rex::Text.rand_text_english(rand(1..42))
     )
   end
 

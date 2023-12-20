@@ -3,7 +3,6 @@
 # Current source: https://github.com/rapid7/metasploit-framework
 ##
 
-
 require 'metasploit/framework/credential_collection'
 
 class MetasploitModule < Msf::Auxiliary
@@ -13,8 +12,8 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'           => 'OWA Exchange Web Services (EWS) Login Scanner',
-      'Description'    => %q{
+      'Name' => 'OWA Exchange Web Services (EWS) Login Scanner',
+      'Description' => %q{
         This module attempts to log in to the Exchange Web Services, often
         exposed at https://example.com/ews/, using NTLM authentication. This
         method is faster and simpler than traditional form-based logins.
@@ -23,18 +22,19 @@ class MetasploitModule < Msf::Auxiliary
         user/pass files; the autodiscovery should find the location of the NTLM
         authentication point as well as the AD domain, and use them accordingly.
       },
-      'Author'         => 'Rich Whitcroft',
-      'License'        => MSF_LICENSE,
+      'Author' => 'Rich Whitcroft',
+      'License' => MSF_LICENSE,
       'DefaultOptions' => { 'SSL' => true, 'VERBOSE' => false }
     )
 
     register_options(
       [
-        OptBool.new('AUTODISCOVER', [ false, "Automatically discover domain URI", true ]),
-        OptString.new('AD_DOMAIN', [ false, "The Active Directory domain name", nil ]),
-        OptString.new('TARGETURI', [ false, "The location of the NTLM service", nil ]),
+        OptBool.new('AUTODISCOVER', [ false, 'Automatically discover domain URI', true ]),
+        OptString.new('AD_DOMAIN', [ false, 'The Active Directory domain name', nil ]),
+        OptString.new('TARGETURI', [ false, 'The location of the NTLM service', nil ]),
         Opt::RPORT(443)
-      ])
+      ]
+    )
   end
 
   def run_host(ip)
@@ -50,15 +50,15 @@ class MetasploitModule < Msf::Auxiliary
       if domain && uri
         print_good("Found NTLM service at #{uri} for domain #{domain}.")
       else
-        print_error("Failed to autodiscover - try manually")
+        print_error('Failed to autodiscover - try manually')
         return
       end
     elsif datastore['AD_DOMAIN'] && datastore['TARGETURI']
       domain = datastore['AD_DOMAIN']
       uri = datastore['TARGETURI']
-      uri << "/" unless uri.chars.last == "/"
+      uri << '/' unless uri.chars.last == '/'
     else
-      print_error("You must set AD_DOMAIN and TARGETURI if not using autodiscover.")
+      print_error('You must set AD_DOMAIN and TARGETURI if not using autodiscover.')
       return
     end
 
@@ -81,12 +81,12 @@ class MetasploitModule < Msf::Auxiliary
 
         res = cli.send_recv(req)
       rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
-        print_error("Connection failed")
+        print_error('Connection failed')
         next
       end
 
       if res.code != 401
-        print_brute :level => :good, :ip => ip, :msg => "Successful login: #{cred.to_s}"
+        print_brute level: :good, ip: ip, msg: "Successful login: #{cred}"
         report_cred(
           ip: ip,
           port: datastore['RPORT'],
@@ -97,38 +97,38 @@ class MetasploitModule < Msf::Auxiliary
 
         return if datastore['STOP_ON_SUCCESS']
       else
-        vprint_brute :level => :verror, :ip => ip, :msg => "Failed login: #{cred.to_s}"
+        vprint_brute level: :verror, ip: ip, msg: "Failed login: #{cred}"
       end
     end
   end
 
   def autodiscover(cli)
-    uris = %w[ /ews/ /rpc/ /public/ ]
+    uris = %w[/ews/ /rpc/ /public/]
     uris.each do |uri|
       begin
         req = cli.request_raw({
-          'encode'   => true,
-          'uri'      => uri,
-          'method'   => 'GET',
-          'headers'  =>  {'Authorization' => 'NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw=='}
+          'encode' => true,
+          'uri' => uri,
+          'method' => 'GET',
+          'headers' => { 'Authorization' => 'NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw==' }
         })
 
         res = cli.send_recv(req)
       rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
-        print_error("HTTP Connection Failed")
+        print_error('HTTP Connection Failed')
         next
       end
 
       unless res
-        print_error("HTTP Connection Timeout")
+        print_error('HTTP Connection Timeout')
         next
       end
 
-      if res && res.code == 401 && res.headers.has_key?('WWW-Authenticate') && res.headers['WWW-Authenticate'].match(/^NTLM/i)
-        hash = res['WWW-Authenticate'].split('NTLM ')[1]
-        domain = Rex::Proto::NTLM::Message.parse(Rex::Text.decode_base64(hash))[:target_name].value().gsub(/\0/,'')
-        return domain, uri
-      end
+      next unless res && res.code == 401 && res.headers.key?('WWW-Authenticate') && res.headers['WWW-Authenticate'].match(/^NTLM/i)
+
+      hash = res['WWW-Authenticate'].split('NTLM ')[1]
+      domain = Rex::Proto::NTLM::Message.parse(Rex::Text.decode_base64(hash))[:target_name].value.gsub(/\0/, '')
+      return domain, uri
     end
 
     return nil, nil
@@ -154,7 +154,7 @@ class MetasploitModule < Msf::Auxiliary
     login_data = {
       core: create_credential(credential_data),
       last_attempted_at: DateTime.now,
-      status: Metasploit::Model::Login::Status::SUCCESSFUL,
+      status: Metasploit::Model::Login::Status::SUCCESSFUL
     }.merge(service_data)
 
     create_credential_login(login_data)

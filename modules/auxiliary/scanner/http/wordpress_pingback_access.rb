@@ -9,45 +9,48 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name' => 'Wordpress Pingback Locator',
-      'Description' => %q{
+    super(
+      update_info(
+        info,
+        'Name' => 'Wordpress Pingback Locator',
+        'Description' => %q{
           This module will scan for wordpress sites with the Pingback
           API enabled. By interfacing with the API an attacker can cause
           the wordpress site to port scan an external target and return
           results. Refer to the wordpress_pingback_portscanner module.
           This issue was fixed in wordpress 3.5.1
         },
-      'Author' =>
-        [
+        'Author' => [
           'Thomas McCarthy "smilingraccoon" <smilingraccoon[at]gmail.com>',
-          'Brandon McCann "zeknox" <bmccann[at]accuvant.com>' ,
+          'Brandon McCann "zeknox" <bmccann[at]accuvant.com>',
           'Christian Mehlmauer' # Original PoC
         ],
-      'License' => MSF_LICENSE,
-      'References'  =>
-        [
+        'License' => MSF_LICENSE,
+        'References' => [
           [ 'CVE', '2013-0235' ],
           [ 'URL', 'https://bugtraq.securityfocus.com/archive/1/525045/30/30/threaded'],
           [ 'URL', 'http://www.ethicalhack3r.co.uk/security/introduction-to-the-wordpress-xml-rpc-api/'],
           [ 'URL', 'https://github.com/FireFart/WordpressPingbackPortScanner']
         ]
-      ))
+      )
+    )
 
-      register_options(
-        [
-          OptString.new('TARGETURI', [ true, 'The path to wordpress installation (e.g. /wordpress/)', '/'])
-        ])
+    register_options(
+      [
+        OptString.new('TARGETURI', [ true, 'The path to wordpress installation (e.g. /wordpress/)', '/'])
+      ]
+    )
 
-      register_advanced_options(
-        [
-          OptInt.new('NUM_REDIRECTS', [ true, "Number of HTTP redirects to follow", 10])
-        ])
+    register_advanced_options(
+      [
+        OptInt.new('NUM_REDIRECTS', [ true, 'Number of HTTP redirects to follow', 10])
+      ]
+    )
   end
 
-  def setup()
+  def setup
     # Check if database is active
-    if db()
+    if db
       @db_active = true
     else
       @db_active = false
@@ -59,15 +62,15 @@ class MetasploitModule < Msf::Auxiliary
     vprint_status("#{ip} - Enumerating XML-RPC URI...")
 
     begin
-
       uri = target_uri.path
-      uri << '/' if uri[-1,1] != '/'
+      uri << '/' if uri[-1, 1] != '/'
 
       res = send_request_cgi(
-      {
+        {
           'method'	=> 'HEAD',
-          'uri'		=> "#{uri}"
-      })
+          'uri'	=> uri.to_s
+        }
+      )
       # Check if X-Pingback exists and return value
       if res
         if res['X-Pingback']
@@ -87,14 +90,14 @@ class MetasploitModule < Msf::Auxiliary
 
   # Creates the XML data to be sent
   def generate_pingback_xml(target, valid_blog_post)
-    xml = "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>"
-    xml << "<methodCall>"
-    xml << "<methodName>pingback.ping</methodName>"
-    xml << "<params>"
+    xml = '<?xml version="1.0" encoding="iso-8859-1"?>'
+    xml << '<methodCall>'
+    xml << '<methodName>pingback.ping</methodName>'
+    xml << '<params>'
     xml << "<param><value><string>#{target}</string></value></param>"
     xml << "<param><value><string>#{valid_blog_post}</string></value></param>"
-    xml << "</params>"
-    xml << "</methodCall>"
+    xml << '</params>'
+    xml << '</methodCall>'
     return xml
   end
 
@@ -103,14 +106,14 @@ class MetasploitModule < Msf::Auxiliary
     blog_posts = wordpress_get_all_blog_posts_via_feed(datastore['NUM_REDIRECTS'])
     blog_posts.each do |blog_post|
       pingback_response = get_pingback_request(xml_rpc, 'http://127.0.0.1', blog_post)
-      if pingback_response
-        pingback_disabled_match = pingback_response.body.match(/<value><int>33<\/int><\/value>/i)
-        if pingback_response.code == 200 and pingback_disabled_match.nil?
-          print_good("#{ip} - Pingback enabled: #{blog_post}")
-          return blog_post
-        else
-          vprint_status("#{ip} - Pingback disabled: #{blog_post}")
-        end
+      next unless pingback_response
+
+      pingback_disabled_match = pingback_response.body.match(%r{<value><int>33</int></value>}i)
+      if (pingback_response.code == 200) && pingback_disabled_match.nil?
+        print_good("#{ip} - Pingback enabled: #{blog_post}")
+        return blog_post
+      else
+        vprint_status("#{ip} - Pingback disabled: #{blog_post}")
       end
     end
 
@@ -119,17 +122,17 @@ class MetasploitModule < Msf::Auxiliary
 
   # method to send xml-rpc requests
   def get_pingback_request(xml_rpc, target, blog_post)
-    uri = xml_rpc.sub(/.*?#{target}/,"")
+    uri = xml_rpc.sub(/.*?#{target}/, '')
     # create xml pingback request
     pingback_xml = generate_pingback_xml(target, blog_post)
 
     # Send post request with crafted XML as data
     begin
       res = send_request_cgi({
-        'uri'    => "#{uri}",
+        'uri' => uri.to_s,
         'method' => 'POST',
-        'data'	 => "#{pingback_xml}"
-        })
+        'data'	=> pingback_xml.to_s
+      })
     rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
       vprint_error("Unable to connect to #{uri}")
       return nil
@@ -140,12 +143,12 @@ class MetasploitModule < Msf::Auxiliary
   # Save data to vuln table
   def store_vuln(ip, blog)
     report_vuln(
-      :host		=> ip,
-      :proto		=> 'tcp',
-      :port		=> datastore['RPORT'],
-      :name		=> self.name,
-      :info		=> "Module #{self.fullname} found pingback at #{blog}",
-      :sname		=> datastore['SSL'] ? "https" : "http"
+      host: ip,
+      proto: 'tcp',
+      port: datastore['RPORT'],
+      name: name,
+      info: "Module #{fullname} found pingback at #{blog}",
+      sname: datastore['SSL'] ? 'https' : 'http'
     )
   end
 

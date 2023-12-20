@@ -12,13 +12,13 @@ class MetasploitModule < Msf::Auxiliary
   # Joomscan and various MSF modules for code examples.
   def initialize
     super(
-      'Name'        => 'Joomla Version Scanner',
+      'Name' => 'Joomla Version Scanner',
       'Description' => %q{
           This module scans a Joomla install for information about the underlying
         operating system and Joomla version.
       },
-      'Author'      => [ 'newpid0' ],
-      'License'     => MSF_LICENSE
+      'Author' => [ 'newpid0' ],
+      'License' => MSF_LICENSE
     )
   end
 
@@ -39,7 +39,7 @@ class MetasploitModule < Msf::Auxiliary
 
   def run_host(ip)
     unless joomla_and_online?
-      print_error("It doesn't look like Joomla is up and running at #{target_uri.to_s}")
+      print_error("It doesn't look like Joomla is up and running at #{target_uri}")
       return
     end
 
@@ -49,7 +49,7 @@ class MetasploitModule < Msf::Auxiliary
     if server
       print_status("Server: #{server}")
     else
-      print_error("Unable to determine server.")
+      print_error('Unable to determine server.')
     end
 
     if version
@@ -62,7 +62,7 @@ class MetasploitModule < Msf::Auxiliary
         data: version
       )
     else
-      print_error("Unable to find Joomla version.")
+      print_error('Unable to find Joomla version.')
     end
   end
 end

@@ -14,36 +14,36 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'           => 'Western Digital MyBook Live Login Utility',
-      'Description'    => 'This module simply attempts to login to a Western Digital MyBook Live instance using a specific user/pass.',
-      'Author'         => [ 'Nicholas Starke <starke.nicholas[at]gmail.com>' ],
-      'License'        => MSF_LICENSE
+      'Name' => 'Western Digital MyBook Live Login Utility',
+      'Description' => 'This module simply attempts to login to a Western Digital MyBook Live instance using a specific user/pass.',
+      'Author' => [ 'Nicholas Starke <starke.nicholas[at]gmail.com>' ],
+      'License' => MSF_LICENSE
     )
 
     register_options(
       [
         Opt::RPORT(80)
-      ])
+      ]
+    )
 
     register_autofilter_ports([ 80 ])
 
     # username is hardcoded into application
     deregister_options(
       'DB_ALL_CREDS', 'DB_ALL_USERS', 'DB_SKIP_EXISTING',
-      'USERNAME', 'USER_FILE', 'USER_AS_PASS', 'PASSWORD_SPRAY')
+      'USERNAME', 'USER_FILE', 'USER_AS_PASS', 'PASSWORD_SPRAY'
+    )
   end
 
   def setup
     super
     # They must select at least blank passwords, provide a pass file or a password
-    one_required = %w(BLANK_PASSWORDS PASS_FILE PASSWORD)
-    unless one_required.any? { |o| datastore.has_key?(o) && datastore[o] }
+    one_required = %w[BLANK_PASSWORDS PASS_FILE PASSWORD]
+    unless one_required.any? { |o| datastore.key?(o) && datastore[o] }
       fail_with(Failure::BadConfig, "Invalid options: One of #{one_required.join(', ')} must be set")
     end
-    if !datastore['PASS_FILE']
-      if !datastore['BLANK_PASSWORDS'] && datastore['PASSWORD'].blank?
-        fail_with(Failure::BadConfig, "PASSWORD or PASS_FILE must be set to a non-empty string if not BLANK_PASSWORDS")
-      end
+    if !datastore['PASS_FILE'] && (!datastore['BLANK_PASSWORDS'] && datastore['PASSWORD'].blank?)
+      fail_with(Failure::BadConfig, 'PASSWORD or PASS_FILE must be set to a non-empty string if not BLANK_PASSWORDS')
     end
   end
 
